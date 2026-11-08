@@ -96,6 +96,20 @@
       background-color: #C84B1A;
       animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
     }
+
+    /* Spotify Equalizer Bars Animation (Active Playback Only) */
+    @keyframes spotify-eq {
+      0%, 100% { transform: scaleY(0.28); }
+      50% { transform: scaleY(1); }
+    }
+    .eq-bar {
+      transform-origin: bottom;
+      transform: scaleY(0.3);
+      transition: transform 150ms ease;
+    }
+    .eq-playing .eq-bar-1 { animation: spotify-eq 0.65s ease-in-out infinite; }
+    .eq-playing .eq-bar-2 { animation: spotify-eq 0.5s ease-in-out 0.15s infinite; }
+    .eq-playing .eq-bar-3 { animation: spotify-eq 0.75s ease-in-out 0.28s infinite; }
   </style>
 </head>
 <body class="bg-stone-950 sm:bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-0 sm:p-4 transition-colors duration-200">
@@ -184,19 +198,22 @@
       </div>
 
       <div class="flex items-center gap-1.5">
-        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-sm hover:opacity-95 transition active:scale-95" title="Upgrade to Pace Plot PRO">
+        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-sm hover:opacity-95 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer" title="Upgrade to Pace Plot PRO">
           <i class="fa-solid fa-crown text-[9px]"></i>
           <span id="headerPremiumLabel">PRO</span>
         </button>
-        <button id="btnMobileAuth" class="px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center gap-1 transition text-xs font-medium border border-stone-200 dark:border-stone-700" title="Account">
+        <button id="btnMobileAuth" class="px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center gap-1 transition text-xs font-medium border border-stone-200 dark:border-stone-700 whitespace-nowrap shrink-0 cursor-pointer" title="Account">
           <i class="fa-brands fa-google text-terracotta text-[10px]"></i>
           <span id="mobileAuthLabel" class="text-[10px]">Sign In</span>
         </button>
-        <button id="audioVoiceToggle" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center justify-center transition text-xs" title="Audio Voice Guidance">
+        <button id="btnTopBarSpotify" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-[#1DB954] hover:bg-[#1DB954]/15 flex items-center justify-center transition text-sm shrink-0 cursor-pointer" title="Spotify Running Playlist & Controls">
+          <i class="fa-brands fa-spotify"></i>
+        </button>
+        <button id="audioVoiceToggle" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center justify-center transition text-xs shrink-0 cursor-pointer" title="Audio Voice Guidance">
           <i id="audioIcon" class="fa-solid fa-volume-high"></i>
         </button>
-        <button id="healthStatusIndicator" class="px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <button id="healthStatusIndicator" class="hidden sm:flex px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold items-center gap-1 whitespace-nowrap shrink-0">
+          <i class="fa-solid fa-heart-pulse text-[9px]"></i>
           <span>Health Sync</span>
         </button>
       </div>
@@ -276,17 +293,36 @@
           <div id="mapWeatherBadge" class="absolute top-14 left-3 z-20 flex items-center gap-2 bg-stone-900/90 text-white backdrop-blur-md px-3 py-1.5 rounded-2xl border border-stone-700/80 shadow-lg text-xs transition-all hover:bg-stone-900 cursor-pointer" title="Live Weather Conditions (Click to announce runner weather)">
             <div class="flex items-center gap-1.5">
               <i id="weatherConditionIcon" class="fa-solid fa-cloud-sun text-amber-400 text-sm"></i>
-              <span id="weatherTempDisplay" class="font-black font-mono text-white text-xs">64°F</span>
+              <span id="weatherTempDisplay" class="font-black font-mono tabular-nums text-white text-xs">64°F</span>
             </div>
             <span class="text-stone-600 dark:text-stone-500 text-[10px]">·</span>
-            <div id="weatherRainContainer" class="flex items-center gap-1 text-[11px] text-sky-400 font-bold">
+            <div id="weatherRainContainer" class="flex items-center gap-1 text-[11px] text-sky-400 font-bold tabular-nums">
               <i class="fa-solid fa-droplet text-[9px]"></i>
               <span id="weatherRainProb">8% rain</span>
             </div>
-            <span id="weatherConditionSummary" class="text-[10px] text-stone-400 font-medium hidden md:inline truncate max-w-[130px]">· Dry</span>
+            <span id="weatherConditionSummary" class="text-[10px] text-stone-400 font-medium hidden md:inline truncate max-w-[110px]">· Dry</span>
           </div>
 
-          <!-- Active Navigation Floating Card (Athletic HUD) -->
+          <!-- Pre-Run / Map Floating Spotify Mini-Player Pill (Always accessible on Map) -->
+          <div id="mapSpotifyFloatingPill" class="absolute top-14 right-3 z-20 flex items-center gap-2 bg-stone-950/90 text-white backdrop-blur-md pl-2.5 pr-2 py-1 rounded-2xl border border-stone-700/80 shadow-lg text-xs transition-all hover:border-[#1DB954]/60">
+            <button id="btnMapSpotifyOpenDrawer" class="flex items-center gap-1.5 text-left min-w-0 max-w-[135px] sm:max-w-[155px] cursor-pointer" title="Open Spotify Running Playlists">
+              <i class="fa-brands fa-spotify text-[#1DB954] text-sm shrink-0"></i>
+              <div class="truncate">
+                <div id="mapSpotifyTrackTitle" class="text-[10px] font-extrabold text-white truncate leading-tight">Midnight Greenway Stride</div>
+                <div id="mapSpotifySubLabel" class="text-[9px] font-mono tabular-nums text-[#1DB954] truncate leading-none">170 BPM · Ready</div>
+              </div>
+            </button>
+            <div class="flex items-center gap-1 border-l border-stone-800 pl-1.5">
+              <button id="btnMapSpotifyPlayPause" class="w-6 h-6 rounded-lg bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 flex items-center justify-center text-[10px] transition active:scale-95 cursor-pointer" title="Play / Pause Running Playlist">
+                <i id="mapSpotifyPlayIcon" class="fa-solid fa-play"></i>
+              </button>
+              <button id="btnMapSpotifyNext" class="w-6 h-6 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center text-[10px] transition active:scale-95 cursor-pointer" title="Next Track">
+                <i class="fa-solid fa-forward-step"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Navigation Floating Card (Athletic HUD + Integrated Spotify Mini-Player) -->
           <div id="navInstructionCard" class="hidden absolute top-14 left-3 right-3 bg-stone-950/95 text-white p-3.5 rounded-3xl shadow-2xl backdrop-blur-xl border border-stone-800 z-30 transition-all transform duration-300">
             <!-- Turn instruction header -->
             <div class="flex items-start gap-3">
@@ -295,13 +331,13 @@
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                  <span id="navDistanceToTurn" class="text-xs font-black font-mono text-amber-400 uppercase tracking-wider">In 120 ft</span>
+                  <span id="navDistanceToTurn" class="text-xs font-black font-mono tabular-nums text-amber-400 uppercase tracking-wider">In 120 ft</span>
                   <div class="flex items-center gap-1.5">
                     <span id="hudVoiceSpeakingBadge" class="hidden text-[10px] text-terracotta font-bold flex items-center gap-1 bg-terracotta/15 border border-terracotta/30 px-2 py-0.5 rounded-lg animate-pulse">
                       <i class="fa-solid fa-volume-high text-[9px]"></i>
                       <span>Speaking</span>
                     </span>
-                    <span id="hudWeatherBadge" class="text-[10px] text-sky-300 font-bold flex items-center gap-1 bg-stone-900/90 px-2 py-0.5 rounded-lg border border-stone-800">
+                    <span id="hudWeatherBadge" class="text-[10px] text-sky-300 font-bold flex items-center gap-1 bg-stone-900/90 px-2 py-0.5 rounded-lg border border-stone-800 tabular-nums">
                       <i id="hudWeatherIcon" class="fa-solid fa-cloud-sun text-amber-400 text-[9px]"></i>
                       <span id="hudWeatherText">64°F · 8% rain</span>
                     </span>
@@ -316,52 +352,118 @@
             </div>
 
             <!-- Live telemetry bar -->
-            <div class="grid grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-stone-800/80 text-center">
+            <div class="grid grid-cols-4 gap-2 mt-2.5 pt-2 border-t border-stone-800/80 text-center">
               <div>
                 <p class="text-[9px] text-stone-400 uppercase font-semibold">Pace</p>
-                <p id="hudPace" class="text-sm font-extrabold font-mono text-white">8'42"</p>
+                <p id="hudPace" class="text-sm font-extrabold font-mono tabular-nums text-white">8'42"</p>
               </div>
               <div>
                 <p class="text-[9px] text-stone-400 uppercase font-semibold">Distance</p>
-                <p id="hudDistance" class="text-sm font-extrabold font-mono text-amber-400">1.20 mi</p>
+                <p id="hudDistance" class="text-sm font-extrabold font-mono tabular-nums text-amber-400">1.20 mi</p>
               </div>
               <div>
                 <p class="text-[9px] text-stone-400 uppercase font-semibold">Time</p>
-                <p id="hudTimer" class="text-sm font-extrabold font-mono text-white">10:15</p>
+                <p id="hudTimer" class="text-sm font-extrabold font-mono tabular-nums text-white">10:15</p>
               </div>
               <div>
                 <p class="text-[9px] text-stone-400 uppercase font-semibold">Heart Rate</p>
-                <p id="hudHR" class="text-sm font-extrabold font-mono text-rose-400">146 bpm</p>
+                <p id="hudHR" class="text-sm font-extrabold font-mono tabular-nums text-rose-400">146 bpm</p>
               </div>
             </div>
 
             <!-- Pace Target & Zone Feedback -->
-            <div class="mt-2.5 px-2.5 py-1.5 rounded-xl bg-stone-900/80 border border-stone-800 flex items-center justify-between text-[11px]">
+            <div class="mt-2 px-2.5 py-1.5 rounded-xl bg-stone-900/80 border border-stone-800 flex items-center justify-between text-[11px]">
               <span class="text-stone-400 flex items-center gap-1">
                 <i class="fa-solid fa-bullseye text-terracotta text-xs"></i>
-                <span>Target: <strong id="hudTargetPaceLabel" class="text-white">8'30"/mi</strong></span>
+                <span>Target: <strong id="hudTargetPaceLabel" class="text-white font-mono tabular-nums">8'30"/mi</strong></span>
               </span>
               <span id="hudPaceStatus" class="font-bold text-emerald-400 flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <i class="fa-solid fa-circle-check text-[10px]"></i>
                 <span>On Pace</span>
               </span>
             </div>
 
+            <!-- ========================================================= -->
+            <!-- SPOTIFY NAVIGATION HUD MINI-PLAYER WIDGET                 -->
+            <!-- ========================================================= -->
+            <div id="hudSpotifyMiniPlayer" class="mt-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-stone-900 via-stone-900/95 to-emerald-950/40 border border-stone-800 hover:border-[#1DB954]/40 transition-all">
+              <div class="flex items-center justify-between gap-2">
+                <!-- Track Artwork + Equalizer + Track Info -->
+                <div id="btnHudSpotifyExpand" class="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group" title="Tap to switch running playlist or manage Spotify API">
+                  <div id="hudSpotifyArtworkBox" class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-600 to-stone-900 flex items-center justify-center relative overflow-hidden flex-shrink-0 shadow-md border border-white/10">
+                    <img id="hudSpotifyArtworkImg" src="" alt="Track Artwork" referrerpolicy="no-referrer" class="hidden w-full h-full object-cover" />
+                    <i id="hudSpotifyBrandIcon" class="fa-brands fa-spotify text-white text-lg"></i>
+                    <!-- Active Equalizer Overlay -->
+                    <div id="hudSpotifyEqOverlay" class="absolute bottom-1 right-1 flex items-end gap-0.5 h-3 px-1 py-0.5 rounded bg-black/60">
+                      <span class="eq-bar eq-bar-1 w-0.5 h-2.5 bg-[#1DB954] rounded-full"></span>
+                      <span class="eq-bar eq-bar-2 w-0.5 h-2.5 bg-[#1DB954] rounded-full"></span>
+                      <span class="eq-bar eq-bar-3 w-0.5 h-2.5 bg-[#1DB954] rounded-full"></span>
+                    </div>
+                  </div>
+
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 text-[10px]">
+                      <span class="font-extrabold text-[#1DB954] flex items-center gap-1 whitespace-nowrap">
+                        <i class="fa-brands fa-spotify text-[10px]"></i>
+                        <span id="hudSpotifyPlaylistName" class="truncate max-w-[115px]">170 BPM Cadence Crusher</span>
+                      </span>
+                      <span class="text-stone-600">·</span>
+                      <span id="hudSpotifyBpmTag" class="font-mono tabular-nums font-bold text-amber-400 whitespace-nowrap">170 BPM</span>
+                      <span id="hudSpotifyDuckedBadge" class="hidden text-[9px] text-sky-300 font-semibold whitespace-nowrap">· Ducked</span>
+                    </div>
+                    <h4 id="hudSpotifyTrackTitle" class="text-xs font-extrabold text-white truncate group-hover:text-[#1DB954] transition">Midnight Greenway Stride</h4>
+                    <p id="hudSpotifyTrackArtist" class="text-[10px] text-stone-400 truncate">Variable Pulse · Stride Circuit</p>
+                  </div>
+                </div>
+
+                <!-- Transport Controls -->
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <button id="btnHudSpotifyShuffle" class="w-7 h-7 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-stone-400 flex items-center justify-center text-[10px] transition cursor-pointer" title="Toggle Shuffle">
+                    <i class="fa-solid fa-shuffle"></i>
+                  </button>
+                  <button id="btnHudSpotifyPrev" class="w-7 h-7 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-stone-200 flex items-center justify-center text-xs transition active:scale-95 cursor-pointer" title="Previous Track">
+                    <i class="fa-solid fa-backward-step"></i>
+                  </button>
+                  <button id="btnHudSpotifyPlayPause" class="w-8 h-8 rounded-xl bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 flex items-center justify-center text-xs font-bold shadow-md shadow-[#1DB954]/20 transition active:scale-95 cursor-pointer" title="Play / Pause">
+                    <i id="hudSpotifyPlayIcon" class="fa-solid fa-play"></i>
+                  </button>
+                  <button id="btnHudSpotifyNext" class="w-7 h-7 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-stone-200 flex items-center justify-center text-xs transition active:scale-95 cursor-pointer" title="Next Track">
+                    <i class="fa-solid fa-forward-step"></i>
+                  </button>
+                  <button id="btnHudSpotifyPlaylists" class="w-7 h-7 rounded-lg bg-stone-800/80 hover:bg-stone-700 text-[#1DB954] flex items-center justify-center text-xs transition cursor-pointer" title="Switch Running Playlist / Spotify Connect">
+                    <i class="fa-solid fa-list-ul"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Scrubbable Progress Bar & Timestamps -->
+              <div class="mt-2 flex items-center gap-2">
+                <span id="hudSpotifyTimeCurrent" class="text-[9px] font-mono tabular-nums text-stone-400 w-7 text-right">0:42</span>
+                <div id="hudSpotifyProgressTrack" class="flex-1 h-1.5 bg-stone-800 rounded-full overflow-hidden cursor-pointer relative group" title="Tap to seek">
+                  <div id="hudSpotifyProgressFill" class="h-full bg-[#1DB954] rounded-full transition-all duration-300" style="width: 20%;"></div>
+                </div>
+                <span id="hudSpotifyTimeTotal" class="text-[9px] font-mono tabular-nums text-stone-400 w-7">3:34</span>
+                <button id="btnHudSpotifyConnectStatus" class="text-[9px] font-bold text-[#1DB954] hover:underline whitespace-nowrap shrink-0 cursor-pointer" title="Connect or Manage Spotify Account">
+                  Connect API
+                </button>
+              </div>
+            </div>
+
             <!-- In-Run Quick Controls -->
             <div class="grid grid-cols-4 gap-1.5 mt-2.5 pt-2 border-t border-stone-800/60">
-              <button id="btnHudPauseResume" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold flex items-center justify-center gap-1 transition">
+              <button id="btnHudPauseResume" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer">
                 <i id="hudPauseIcon" class="fa-solid fa-pause text-amber-400 text-[11px]"></i>
                 <span id="hudPauseText">Pause</span>
               </button>
-              <button id="btnHudRepeatVoice" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-sky-300 text-xs font-bold flex items-center justify-center gap-1 transition" title="Repeat Audio Turn Direction">
+              <button id="btnHudRepeatVoice" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-sky-300 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer" title="Repeat Audio Turn Direction">
                 <i class="fa-solid fa-volume-high text-[11px]"></i>
                 <span>Repeat</span>
               </button>
-              <button id="btnHudSos" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold flex items-center justify-center gap-1 transition">
+              <button id="btnHudSos" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer">
                 <i class="fa-solid fa-triangle-exclamation text-rose-400 text-[11px]"></i>
                 <span>SOS</span>
               </button>
-              <button id="btnHudStop" class="py-1.5 px-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-1 transition">
+              <button id="btnHudStop" class="py-1.5 px-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer">
                 <i class="fa-solid fa-circle-stop text-[11px]"></i>
                 <span>End</span>
               </button>
@@ -370,16 +472,19 @@
 
           <!-- Map Floating Quick Actions (Right vertical stack) -->
           <div class="absolute right-3 bottom-3 flex flex-col gap-2 z-20">
-            <button id="btnToggleSatellite" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Satellite / Terrain">
+            <button id="btnMapQuickSpotify" class="w-9 h-9 rounded-full bg-stone-950/90 text-[#1DB954] border border-stone-700/80 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-900 transition cursor-pointer" title="Spotify Running Playlist & Controls">
+              <i class="fa-brands fa-spotify text-sm"></i>
+            </button>
+            <button id="btnToggleSatellite" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Toggle Satellite / Terrain">
               <i class="fa-solid fa-layer-group text-xs"></i>
             </button>
-            <button id="btnToggleSafetyHeatmap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-terracotta shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Safety Overlay">
+            <button id="btnToggleSafetyHeatmap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-terracotta shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Toggle Safety Overlay">
               <i class="fa-solid fa-shield-halved text-xs"></i>
             </button>
-            <button id="btnRecenter" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Recenter Location">
+            <button id="btnRecenter" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Recenter Location">
               <i class="fa-solid fa-location-crosshairs text-xs"></i>
             </button>
-            <button id="btnMaximizeMap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Bottom Drawer">
+            <button id="btnMaximizeMap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Toggle Bottom Drawer">
               <i class="fa-solid fa-up-down text-xs"></i>
             </button>
           </div>
@@ -475,9 +580,9 @@
             <div>
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span class="text-[10px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">AI Route Choices</span>
-                  <span id="routeChoicesBadge" class="text-[9px] px-1.5 py-0.2 rounded-md bg-stone-200 dark:bg-stone-700 font-bold text-stone-700 dark:text-stone-300">4 Options</span>
+                  <i class="fa-solid fa-route text-emerald-500 text-[10px]"></i>
+                  <span class="text-[10px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">Safe Route Choices</span>
+                  <span id="routeChoicesBadge" class="text-[10px] font-mono tabular-nums font-bold text-stone-500 dark:text-stone-400">· 4 Options</span>
                 </div>
                 <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-[11px] font-extrabold flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Generate fresh alternative routes">
                   <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
@@ -1359,11 +1464,10 @@
 
         <!-- Header with Golden Crown Icon -->
         <div class="text-center pt-2 space-y-1.5">
-          <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-terracotta text-white flex items-center justify-center text-2xl shadow-xl shadow-terracotta/30 animate-pulse">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-terracotta text-white flex items-center justify-center text-2xl shadow-xl shadow-terracotta/30">
             <i class="fa-solid fa-crown"></i>
           </div>
-          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-wider">
-            <i class="fa-solid fa-sparkles text-[9px]"></i>
+          <div class="text-amber-400 text-[10px] font-black uppercase tracking-wider">
             <span>Pace Plot PRO</span>
           </div>
           <h2 class="text-lg font-black text-white">Elevate Every Stride</h2>
@@ -1547,6 +1651,117 @@
         <div class="text-[10px] font-black uppercase tracking-wider text-amber-400">Achievement Unlocked!</div>
         <h4 id="toastBadgeTitle" class="text-xs font-bold text-white truncate">Early Bird</h4>
         <p id="toastBadgeDesc" class="text-[10px] text-stone-400 truncate">Run logged before 7:00 AM</p>
+      </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SPOTIFY RUNNING PLAYLIST & API CONNECT MODAL DRAWER       -->
+    <!-- ========================================================= -->
+    <div id="modalSpotifyPlaylists" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+      <div class="bg-stone-900 border-t sm:border border-stone-700/80 text-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl relative max-h-[88vh] overflow-y-auto space-y-3.5">
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-2 border-b border-stone-800 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30 flex items-center justify-center text-lg">
+              <i class="fa-brands fa-spotify"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-white flex items-center gap-1.5">
+                <span>Spotify Running Audio</span>
+                <span id="spotifyModalStatusText" class="text-[10px] font-mono font-semibold text-[#1DB954]">· Cadence Synth</span>
+              </h3>
+              <p class="text-[11px] text-stone-400">Control your running playlists & pace-synced BPM right from the HUD</p>
+            </div>
+          </div>
+          <button id="btnCloseSpotifyModal" class="w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Spotify Account Connection Card -->
+        <div class="p-3 rounded-2xl bg-stone-950/70 border border-stone-800 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div id="spotifyAccountTitle" class="text-xs font-bold text-white truncate">Spotify Web API Integration</div>
+              <p id="spotifyAccountSub" class="text-[10px] text-stone-400 truncate">Connect your Spotify account to sync personal playlists & active devices</p>
+            </div>
+            <button id="btnSpotifyOAuthConnect" class="px-3 py-1.5 rounded-xl bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 font-extrabold text-xs flex items-center gap-1.5 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer">
+              <i class="fa-brands fa-spotify text-sm"></i>
+              <span id="btnSpotifyOAuthLabel">Connect Spotify</span>
+            </button>
+          </div>
+
+          <!-- Expandable Developer / Custom Client ID Configuration (Shown when needed or toggled) -->
+          <div class="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-stone-800/80">
+            <span>Redirect URI: <code id="spotifyRedirectUriDisplay" class="text-stone-300 font-mono">/auth/callback</code></span>
+            <button id="btnToggleSpotifyConfigForm" class="text-[#1DB954] hover:underline font-semibold cursor-pointer">API Settings</button>
+          </div>
+
+          <div id="spotifyConfigForm" class="hidden pt-2 border-t border-stone-800 space-y-2 text-xs">
+            <div>
+              <label for="inputSpotifyClientId" class="block text-[10px] font-semibold text-stone-300 mb-1">Spotify Client ID (Optional override for OAuth PKCE):</label>
+              <input id="inputSpotifyClientId" type="text" placeholder="Paste Spotify Developer Client ID..." class="w-full px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-white font-mono focus:outline-none focus:border-[#1DB954]">
+            </div>
+            <div>
+              <label for="inputSpotifyDirectToken" class="block text-[10px] font-semibold text-stone-300 mb-1">Or Paste OAuth Bearer Access Token directly:</label>
+              <div class="flex gap-1.5">
+                <input id="inputSpotifyDirectToken" type="password" placeholder="BQA..." class="flex-1 px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-white font-mono focus:outline-none focus:border-[#1DB954]">
+                <button id="btnSaveSpotifyConfig" class="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#1DB954] font-bold text-xs whitespace-nowrap cursor-pointer">Save & Sync</button>
+              </div>
+            </div>
+            <p id="spotifyConfigFeedback" class="text-[10px] text-stone-400"></p>
+          </div>
+        </div>
+
+        <!-- Running Playlists Selector -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-stone-300 uppercase tracking-wider text-[10px]">Running Playlists</span>
+            <span id="spotifyActiveBpmReadout" class="font-mono tabular-nums text-[11px] font-bold text-[#1DB954]">168–172 BPM</span>
+          </div>
+          <div id="spotifyPlaylistsGrid" class="grid grid-cols-1 gap-2 max-h-44 overflow-y-auto pr-0.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Track Queue in Selected Playlist -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-[10px] text-stone-400 font-semibold">
+            <span>Tracks in Playlist</span>
+            <span>Tap track to play</span>
+          </div>
+          <div id="spotifyTracksList" class="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Audio Ducking & Volume Controls -->
+        <div class="p-3 rounded-2xl bg-stone-950/60 border border-stone-800 space-y-2.5 text-xs">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-[11px] text-stone-300 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-volume-high text-[#1DB954]"></i>
+              <span>Music Volume</span>
+            </span>
+            <input id="spotifyVolumeSlider" type="range" min="0" max="100" value="82" class="w-36 accent-[#1DB954] h-1.5 bg-stone-700 rounded-lg cursor-pointer">
+            <span id="spotifyVolumeValue" class="font-mono tabular-nums text-[11px] font-bold text-white w-9 text-right">82%</span>
+          </div>
+
+          <div class="flex items-center justify-between pt-1.5 border-t border-stone-800/80">
+            <div>
+              <div class="text-[11px] font-bold text-stone-200">Auto-Duck on Voice Turn Guidance</div>
+              <p class="text-[10px] text-stone-400">Automatically lowers music volume when navigation speaks</p>
+            </div>
+            <input type="checkbox" id="toggleSpotifyAutoDuck" checked class="accent-[#1DB954] w-4 h-4 rounded cursor-pointer">
+          </div>
+
+          <div class="flex items-center justify-between pt-1.5 border-t border-stone-800/80">
+            <div>
+              <div class="text-[11px] font-bold text-stone-200">In-Browser Cadence Synth Audio</div>
+              <p class="text-[10px] text-stone-400">Synthesize live BPM running beats when no external device is active</p>
+            </div>
+            <input type="checkbox" id="toggleSpotifySynthAudio" checked class="accent-[#1DB954] w-4 h-4 rounded cursor-pointer">
+          </div>
+        </div>
       </div>
     </div>
   </main>

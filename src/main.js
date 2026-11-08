@@ -43,6 +43,29 @@ import {
   loadActivePlan,
   EVENT_GOALS
 } from './trainingPlan.js';
+import {
+  initSpotifyController,
+  subscribeSpotifyState,
+  getSpotifyPlayerState,
+  formatTrackTime,
+  initiateSpotifyOAuthPopup,
+  connectWithAccessTokenDirect,
+  disconnectSpotifyAccount,
+  getCustomSpotifyClientId,
+  setCustomSpotifyClientId,
+  togglePlayPause,
+  skipNextTrack,
+  skipPreviousTrack,
+  toggleShuffleState,
+  selectPlaylistByIndex,
+  selectTrackByIndex,
+  seekTrackProgress,
+  setPlayerVolume,
+  setAutoDuckOnVoice,
+  setSynthAudioEnabled,
+  setVoiceNavigationDucking,
+  syncPlaylistToPaceSeconds
+} from './spotify.js';
 
 // ----------------------------------------------------
 // Google Maps Quota Handling (Tier 1 & 2 Defense)
@@ -240,6 +263,7 @@ function startApp() {
   initSafetyDisclaimer();
   initBadgesAndPremium();
   initTrainingPlan();
+  initSpotifyMiniPlayerUI();
   setupUIHandlers();
   initGoogleMaps();
   setupFirebaseAuth();
@@ -1447,10 +1471,14 @@ function updateSaveButtonStatus() {
 function updateEstimatedDuration() {
   const dist = activeRoute?.distance || currentSelectedDistance || 3.1;
   const totalSeconds = dist * currentPaceSeconds;
-  const mins = Math.floor(totalSeconds / 60);
+  const mins = Math.max(1, Math.round(totalSeconds / 60));
   const paceDisplay = document.getElementById('targetPaceDisplay');
   if (paceDisplay) {
     paceDisplay.textContent = `${currentTargetPace} /mi (~${mins} min)`;
+  }
+  const estDurationText = document.getElementById('estDurationText');
+  if (estDurationText) {
+    estDurationText.textContent = `~${mins} min at ${currentTargetPace}`;
   }
   const hudTargetPaceLabel = document.getElementById('hudTargetPaceLabel');
   if (hudTargetPaceLabel) {
@@ -1570,17 +1598,20 @@ function speakInstruction(text, options = {}) {
     utter.onstart = () => {
       if (speakingBadge) speakingBadge.classList.remove('hidden');
       if (navTurnIcon) navTurnIcon.classList.add('animate-pulse');
+      setVoiceNavigationDucking(true);
     };
 
     utter.onend = () => {
       if (speakingBadge) speakingBadge.classList.add('hidden');
       if (navTurnIcon) navTurnIcon.classList.remove('animate-pulse');
+      setVoiceNavigationDucking(false);
       currentUtterance = null;
     };
 
     utter.onerror = () => {
       if (speakingBadge) speakingBadge.classList.add('hidden');
       if (navTurnIcon) navTurnIcon.classList.remove('animate-pulse');
+      setVoiceNavigationDucking(false);
       currentUtterance = null;
     };
 
@@ -1588,8 +1619,16 @@ function speakInstruction(text, options = {}) {
       try { navigator.vibrate(options.haptic); } catch (_) {}
     }
 
+    setVoiceNavigationDucking(true);
+    setTimeout(() => {
+      if (!window.speechSynthesis.speaking) {
+        setVoiceNavigationDucking(false);
+      }
+    }, 3800);
+
     window.speechSynthesis.speak(utter);
   } catch (err) {
+    setVoiceNavigationDucking(false);
     console.warn("Web Speech API notice:", err);
   }
 }
@@ -1671,6 +1710,7 @@ function startNavigation() {
   const btnNavLabel = document.getElementById('btnNavLabel');
   const compactBtnIcon = document.getElementById('compactBtnNavIcon');
   const navCard = document.getElementById('navInstructionCard');
+  const mapSpotifyPill = document.getElementById('mapSpotifyFloatingPill');
   const hudPauseIcon = document.getElementById('hudPauseIcon');
   const hudPauseText = document.getElementById('hudPauseText');
 
@@ -1678,6 +1718,7 @@ function startNavigation() {
   if (btnNavLabel) btnNavLabel.textContent = 'End Navigation';
   if (compactBtnIcon) compactBtnIcon.className = 'fa-solid fa-circle-stop text-rose-300';
   if (navCard) navCard.classList.remove('hidden');
+  if (mapSpotifyPill) mapSpotifyPill.classList.add('hidden');
   if (hudPauseIcon) hudPauseIcon.className = 'fa-solid fa-pause text-amber-400 text-[11px]';
   if (hudPauseText) hudPauseText.textContent = 'Pause';
 
@@ -1718,6 +1759,7 @@ function stopNavigation() {
   const btnNavLabel = document.getElementById('btnNavLabel');
   const compactBtnIcon = document.getElementById('compactBtnNavIcon');
   const navCard = document.getElementById('navInstructionCard');
+  const mapSpotifyPill = document.getElementById('mapSpotifyFloatingPill');
   const hudPauseIcon = document.getElementById('hudPauseIcon');
   const hudPauseText = document.getElementById('hudPauseText');
   const runnerDot = document.getElementById('elevRunnerDot');
@@ -1726,6 +1768,7 @@ function stopNavigation() {
   if (btnNavLabel) btnNavLabel.textContent = 'Start Safe Voice Nav';
   if (compactBtnIcon) compactBtnIcon.className = 'fa-solid fa-circle-play';
   if (navCard) navCard.classList.add('hidden');
+  if (mapSpotifyPill) mapSpotifyPill.classList.remove('hidden');
   if (hudPauseIcon) hudPauseIcon.className = 'fa-solid fa-pause text-amber-400 text-[11px]';
   if (hudPauseText) hudPauseText.textContent = 'Pause';
   if (runnerDot) runnerDot.setAttribute('cx', '12');
@@ -2118,8 +2161,9 @@ function setupUIHandlers() {
       currentTargetPace = `${mins}'${secs ? String(secs).padStart(2, '0') + '"' : '00"'}`;
 
       updateEstimatedDuration();
+      const matchedPl = syncPlaylistToPaceSeconds(currentPaceSeconds);
       playTurnChime();
-      speakInstruction(`Target pace set to ${label}, ${currentTargetPace} per mile.`);
+      speakInstruction(`Target pace set to ${label}, ${currentTargetPace} per mile.${matchedPl ? ` Synced playlist to ${matchedPl.name}.` : ''}`);
     });
   });
 
@@ -2866,14 +2910,11 @@ function setupFirebaseAuth() {
 
   async function handleAuthClick() {
     if (currentUser) {
-      const confirmSignOut = window.confirm(`Sign out of Google Account (${currentUser.email})?`);
-      if (confirmSignOut) {
-        try {
-          await logoutUser();
-          speakInstruction("Signed out of Google account.");
-        } catch (err) {
-          console.error("Sign out error:", err);
-        }
+      try {
+        await logoutUser();
+        speakInstruction("Signed out of Google account.");
+      } catch (err) {
+        console.error("Sign out error:", err);
       }
     } else {
       try {
@@ -3097,13 +3138,11 @@ function renderCloudRoutes(routesList) {
     const deleteBtn = card.querySelector('.btn-delete-cloud-route');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
-        if (window.confirm(`Delete "${r.title}" from your cloud library?`)) {
-          try {
-            await deleteSavedRoute(r.id);
-            speakInstruction("Route deleted from cloud library.");
-          } catch (err) {
-            console.error("Error deleting route:", err);
-          }
+        try {
+          await deleteSavedRoute(r.id);
+          speakInstruction("Route deleted from cloud library.");
+        } catch (err) {
+          console.error("Error deleting route:", err);
         }
       });
     }
@@ -3212,4 +3251,402 @@ function renderCloudWorkouts(workoutsList) {
     container.appendChild(card);
   });
 }
+
+// ----------------------------------------------------
+// 11. Spotify Navigation HUD Mini-Player & Playlist Drawer UI
+// ----------------------------------------------------
+function initSpotifyMiniPlayerUI() {
+  initSpotifyController((state) => {
+    playTurnChime();
+    speakInstruction(`Spotify account connected. Synced ${state.playlists.length} running playlists.`);
+  });
+
+  const modal = document.getElementById('modalSpotifyPlaylists');
+  const btnCloseModal = document.getElementById('btnCloseSpotifyModal');
+  const btnTopBarSpotify = document.getElementById('btnTopBarSpotify');
+  const btnMapQuickSpotify = document.getElementById('btnMapQuickSpotify');
+  const btnMapSpotifyOpenDrawer = document.getElementById('btnMapSpotifyOpenDrawer');
+  const btnHudSpotifyExpand = document.getElementById('btnHudSpotifyExpand');
+  const btnHudSpotifyPlaylists = document.getElementById('btnHudSpotifyPlaylists');
+  const btnHudSpotifyConnectStatus = document.getElementById('btnHudSpotifyConnectStatus');
+
+  const btnHudPlayPause = document.getElementById('btnHudSpotifyPlayPause');
+  const btnHudPrev = document.getElementById('btnHudSpotifyPrev');
+  const btnHudNext = document.getElementById('btnHudSpotifyNext');
+  const btnHudShuffle = document.getElementById('btnHudSpotifyShuffle');
+  const hudProgressTrack = document.getElementById('hudSpotifyProgressTrack');
+
+  const btnMapPlayPause = document.getElementById('btnMapSpotifyPlayPause');
+  const btnMapNext = document.getElementById('btnMapSpotifyNext');
+
+  const btnOAuthConnect = document.getElementById('btnSpotifyOAuthConnect');
+  const btnToggleConfigForm = document.getElementById('btnToggleSpotifyConfigForm');
+  const configForm = document.getElementById('spotifyConfigForm');
+  const inputClientId = document.getElementById('inputSpotifyClientId');
+  const inputDirectToken = document.getElementById('inputSpotifyDirectToken');
+  const btnSaveConfig = document.getElementById('btnSaveSpotifyConfig');
+  const configFeedback = document.getElementById('spotifyConfigFeedback');
+  const redirectUriDisplay = document.getElementById('spotifyRedirectUriDisplay');
+
+  const volumeSlider = document.getElementById('spotifyVolumeSlider');
+  const volumeValue = document.getElementById('spotifyVolumeValue');
+  const toggleAutoDuck = document.getElementById('toggleSpotifyAutoDuck');
+  const toggleSynthAudio = document.getElementById('toggleSpotifySynthAudio');
+
+  if (redirectUriDisplay) {
+    redirectUriDisplay.textContent = `${window.location.origin}/auth/callback`;
+  }
+  if (inputClientId) {
+    inputClientId.value = getCustomSpotifyClientId();
+  }
+
+  function openSpotifyModal() {
+    if (modal) {
+      modal.classList.remove('hidden');
+      renderSpotifyModalLists(getSpotifyPlayerState());
+    }
+  }
+
+  function closeSpotifyModal() {
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
+  [
+    btnTopBarSpotify,
+    btnMapQuickSpotify,
+    btnMapSpotifyOpenDrawer,
+    btnHudSpotifyExpand,
+    btnHudSpotifyPlaylists,
+    btnHudSpotifyConnectStatus
+  ].forEach((btn) => {
+    if (btn) btn.addEventListener('click', openSpotifyModal);
+  });
+
+  if (btnCloseModal) btnCloseModal.addEventListener('click', closeSpotifyModal);
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeSpotifyModal();
+    });
+  }
+
+  // Transport controls (HUD & Map Floating Pill)
+  if (btnHudPlayPause) {
+    btnHudPlayPause.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePlayPause();
+    });
+  }
+  if (btnMapPlayPause) {
+    btnMapPlayPause.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePlayPause();
+    });
+  }
+  if (btnHudPrev) {
+    btnHudPrev.addEventListener('click', (e) => {
+      e.stopPropagation();
+      skipPreviousTrack();
+    });
+  }
+  if (btnHudNext) {
+    btnHudNext.addEventListener('click', (e) => {
+      e.stopPropagation();
+      skipNextTrack();
+    });
+  }
+  if (btnMapNext) {
+    btnMapNext.addEventListener('click', (e) => {
+      e.stopPropagation();
+      skipNextTrack();
+    });
+  }
+  if (btnHudShuffle) {
+    btnHudShuffle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleShuffleState();
+    });
+  }
+
+  // Scrubbing progress bar inside HUD
+  if (hudProgressTrack) {
+    hudProgressTrack.addEventListener('click', (e) => {
+      const rect = hudProgressTrack.getBoundingClientRect();
+      if (!rect.width) return;
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      seekTrackProgress(pct);
+    });
+  }
+
+  // Spotify OAuth Connect / Disconnect Button
+  if (btnOAuthConnect) {
+    btnOAuthConnect.addEventListener('click', async () => {
+      const currentState = getSpotifyPlayerState();
+      if (currentState.connected) {
+        disconnectSpotifyAccount();
+        if (configFeedback) {
+          configFeedback.textContent = 'Disconnected from Spotify Web API. Switched to local Cadence Synth.';
+        }
+        return;
+      }
+
+      if (inputClientId && inputClientId.value.trim()) {
+        setCustomSpotifyClientId(inputClientId.value.trim());
+      }
+
+      await initiateSpotifyOAuthPopup({
+        onNeedsConfig: (redirectUri) => {
+          if (configForm) configForm.classList.remove('hidden');
+          if (configFeedback) {
+            configFeedback.textContent = `Set SPOTIFY_CLIENT_ID in environment variables or paste your Spotify Client ID / Bearer Token above. Callback URL: ${redirectUri}`;
+          }
+          if (inputClientId) inputClientId.focus();
+        },
+        onPopupBlocked: () => {
+          if (configForm) configForm.classList.remove('hidden');
+          if (configFeedback) {
+            configFeedback.textContent = 'Popup was blocked by browser. Please allow popups for Spotify login.';
+          }
+        }
+      });
+    });
+  }
+
+  if (btnToggleConfigForm && configForm) {
+    btnToggleConfigForm.addEventListener('click', () => {
+      configForm.classList.toggle('hidden');
+    });
+  }
+
+  if (btnSaveConfig) {
+    btnSaveConfig.addEventListener('click', async () => {
+      const cid = inputClientId ? inputClientId.value.trim() : '';
+      const tok = inputDirectToken ? inputDirectToken.value.trim() : '';
+      setCustomSpotifyClientId(cid);
+
+      if (tok) {
+        if (configFeedback) configFeedback.textContent = 'Verifying Spotify Bearer token...';
+        const ok = await connectWithAccessTokenDirect(tok);
+        if (configFeedback) {
+          configFeedback.textContent = ok
+            ? 'Spotify Web API connected and playlists synced!'
+            : 'Token saved. Ensure token has user-read-playback-state & user-modify-playback-state scopes.';
+        }
+        if (inputDirectToken) inputDirectToken.value = '';
+      } else if (cid) {
+        if (configFeedback) {
+          configFeedback.textContent = 'Client ID saved. Click "Connect Spotify" above to launch OAuth popup.';
+        }
+      }
+    });
+  }
+
+  // Volume & Ducking controls
+  if (volumeSlider) {
+    volumeSlider.addEventListener('input', (e) => {
+      const val = Number(e.target.value);
+      if (volumeValue) volumeValue.textContent = `${val}%`;
+      setPlayerVolume(val);
+    });
+  }
+
+  if (toggleAutoDuck) {
+    toggleAutoDuck.addEventListener('change', (e) => {
+      setAutoDuckOnVoice(e.target.checked);
+    });
+  }
+
+  if (toggleSynthAudio) {
+    toggleSynthAudio.addEventListener('change', (e) => {
+      setSynthAudioEnabled(e.target.checked);
+    });
+  }
+
+  // Subscribe to Spotify Player state updates
+  subscribeSpotifyState((state) => {
+    syncSpotifyHudAndPillUI(state);
+    if (modal && !modal.classList.contains('hidden')) {
+      renderSpotifyModalLists(state);
+    }
+  });
+}
+
+function syncSpotifyHudAndPillUI(state) {
+  const track = state.track || {};
+  const pl = state.playlist || {};
+
+  // 1. Update Navigation HUD Mini-Player
+  const hudPlaylistName = document.getElementById('hudSpotifyPlaylistName');
+  const hudBpmTag = document.getElementById('hudSpotifyBpmTag');
+  const hudDuckedBadge = document.getElementById('hudSpotifyDuckedBadge');
+  const hudTrackTitle = document.getElementById('hudSpotifyTrackTitle');
+  const hudTrackArtist = document.getElementById('hudSpotifyTrackArtist');
+  const hudPlayIcon = document.getElementById('hudSpotifyPlayIcon');
+  const hudShuffleBtn = document.getElementById('btnHudSpotifyShuffle');
+  const hudTimeCurrent = document.getElementById('hudSpotifyTimeCurrent');
+  const hudTimeTotal = document.getElementById('hudSpotifyTimeTotal');
+  const hudProgressFill = document.getElementById('hudSpotifyProgressFill');
+  const hudConnectStatus = document.getElementById('btnHudSpotifyConnectStatus');
+  const hudEqOverlay = document.getElementById('hudSpotifyEqOverlay');
+  const hudArtworkImg = document.getElementById('hudSpotifyArtworkImg');
+  const hudBrandIcon = document.getElementById('hudSpotifyBrandIcon');
+
+  if (hudPlaylistName) hudPlaylistName.textContent = pl.name || 'Running Playlist';
+  if (hudBpmTag) hudBpmTag.textContent = `${track.bpm || 170} BPM`;
+  if (hudDuckedBadge) {
+    hudDuckedBadge.classList.toggle('hidden', !state.isDuckedForVoice);
+  }
+  if (hudTrackTitle) hudTrackTitle.textContent = track.title || 'Select Track';
+  if (hudTrackArtist) hudTrackArtist.textContent = track.artist || 'Spotify Running';
+  if (hudPlayIcon) {
+    hudPlayIcon.className = state.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+  }
+  if (hudShuffleBtn) {
+    hudShuffleBtn.classList.toggle('text-[#1DB954]', state.isShuffle);
+    hudShuffleBtn.classList.toggle('text-stone-400', !state.isShuffle);
+  }
+  if (hudEqOverlay) {
+    hudEqOverlay.classList.toggle('eq-playing', state.isPlaying);
+  }
+
+  const artUrl = track.artworkUrl || pl.coverImage || '';
+  if (hudArtworkImg && hudBrandIcon) {
+    if (artUrl) {
+      hudArtworkImg.src = artUrl;
+      hudArtworkImg.classList.remove('hidden');
+      hudBrandIcon.classList.add('hidden');
+    } else {
+      hudArtworkImg.classList.add('hidden');
+      hudBrandIcon.classList.remove('hidden');
+    }
+  }
+
+  const pct = state.durationMs > 0 ? Math.min(100, (state.progressMs / state.durationMs) * 100) : 0;
+  if (hudProgressFill) hudProgressFill.style.width = `${pct.toFixed(1)}%`;
+  if (hudTimeCurrent) hudTimeCurrent.textContent = formatTrackTime(state.progressMs);
+  if (hudTimeTotal) hudTimeTotal.textContent = formatTrackTime(state.durationMs);
+  if (hudConnectStatus) {
+    hudConnectStatus.textContent = state.connected ? 'Spotify Connected' : 'Connect API';
+  }
+
+  // 2. Update Map Floating Spotify Pill
+  const mapTrackTitle = document.getElementById('mapSpotifyTrackTitle');
+  const mapSubLabel = document.getElementById('mapSpotifySubLabel');
+  const mapPlayIcon = document.getElementById('mapSpotifyPlayIcon');
+
+  if (mapTrackTitle) mapTrackTitle.textContent = track.title || 'Running Playlist';
+  if (mapSubLabel) {
+    mapSubLabel.textContent = `${track.bpm || 170} BPM · ${state.isPlaying ? formatTrackTime(state.progressMs) : 'Paused'}`;
+  }
+  if (mapPlayIcon) {
+    mapPlayIcon.className = state.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+  }
+
+  // 3. Update Modal Header & Account Status
+  const modalStatusText = document.getElementById('spotifyModalStatusText');
+  const accountTitle = document.getElementById('spotifyAccountTitle');
+  const accountSub = document.getElementById('spotifyAccountSub');
+  const oauthLabel = document.getElementById('btnSpotifyOAuthLabel');
+  const activeBpmReadout = document.getElementById('spotifyActiveBpmReadout');
+
+  if (modalStatusText) {
+    modalStatusText.textContent = state.connected
+      ? `· ${state.deviceName}`
+      : '· Cadence Synth';
+  }
+  if (accountTitle) {
+    accountTitle.textContent = state.connected
+      ? `Connected as ${state.userProfile?.displayName || 'Spotify Runner'}`
+      : 'Spotify Web API Integration';
+  }
+  if (accountSub) {
+    accountSub.textContent = state.connected
+      ? `Active playback synced via ${state.deviceName}`
+      : 'Connect your Spotify account to sync personal playlists & active devices';
+  }
+  if (oauthLabel) {
+    oauthLabel.textContent = state.connected ? 'Disconnect' : 'Connect Spotify';
+  }
+  if (activeBpmReadout) {
+    activeBpmReadout.textContent = pl.bpmRange || `${track.bpm || 170} BPM`;
+  }
+}
+
+function renderSpotifyModalLists(state) {
+  const playlistsGrid = document.getElementById('spotifyPlaylistsGrid');
+  const tracksList = document.getElementById('spotifyTracksList');
+
+  if (playlistsGrid) {
+    playlistsGrid.innerHTML = '';
+    state.playlists.forEach((pl, idx) => {
+      const isSelected = idx === state.activePlaylistIndex;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `w-full p-2.5 rounded-2xl border text-left flex items-center justify-between gap-2.5 transition cursor-pointer ${
+        isSelected
+          ? 'bg-[#1DB954]/15 border-[#1DB954] text-white'
+          : 'bg-stone-950/60 border-stone-800 hover:border-stone-700 text-stone-300'
+      }`;
+
+      btn.innerHTML = `
+        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br ${pl.coverGradient || 'from-emerald-500 to-stone-900'} flex items-center justify-center text-white text-sm shrink-0">
+            <i class="fa-brands fa-spotify"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-extrabold text-white truncate">${pl.name}</div>
+            <div class="text-[10px] text-stone-400 truncate">${pl.subtitle || ''} · <span class="font-mono text-[#1DB954]">${pl.bpmRange || '170 BPM'}</span></div>
+          </div>
+        </div>
+        <div class="text-[10px] font-mono font-bold ${isSelected ? 'text-[#1DB954]' : 'text-stone-400'} shrink-0">
+          ${isSelected ? (state.isPlaying ? 'Playing' : 'Active') : 'Load'}
+        </div>
+      `;
+
+      btn.addEventListener('click', () => {
+        selectPlaylistByIndex(idx, true);
+      });
+
+      playlistsGrid.appendChild(btn);
+    });
+  }
+
+  if (tracksList && state.playlist) {
+    tracksList.innerHTML = '';
+    (state.playlist.tracks || []).forEach((trk, tIdx) => {
+      const isCurrent = tIdx === state.activeTrackIndex;
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = `w-full px-2.5 py-2 rounded-xl border text-left flex items-center justify-between gap-2 transition cursor-pointer ${
+        isCurrent
+          ? 'bg-stone-800 border-[#1DB954]/50 text-white'
+          : 'bg-stone-950/40 border-stone-800/60 hover:bg-stone-800/50 text-stone-300'
+      }`;
+
+      row.innerHTML = `
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span class="w-5 text-center font-mono text-[10px] ${isCurrent ? 'text-[#1DB954] font-bold' : 'text-stone-500'}">
+            ${isCurrent && state.isPlaying ? '<i class="fa-solid fa-volume-high"></i>' : tIdx + 1}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-bold ${isCurrent ? 'text-[#1DB954]' : 'text-white'} truncate">${trk.title}</div>
+            <div class="text-[10px] text-stone-400 truncate">${trk.artist}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 font-mono tabular-nums text-[10px]">
+          <span class="text-amber-400 font-bold">${trk.bpm || 170} BPM</span>
+          <span class="text-stone-400">${formatTrackTime(trk.durationMs)}</span>
+        </div>
+      `;
+
+      row.addEventListener('click', () => {
+        selectTrackByIndex(tIdx);
+      });
+
+      tracksList.appendChild(row);
+    });
+  }
+}
+
 
