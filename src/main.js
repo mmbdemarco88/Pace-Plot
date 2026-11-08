@@ -237,12 +237,58 @@ let activeTrainingPlan = null;
 function startApp() {
   setupClock();
   initSpeechSynthesis();
+  initSafetyDisclaimer();
   initBadgesAndPremium();
   initTrainingPlan();
   setupUIHandlers();
   initGoogleMaps();
   setupFirebaseAuth();
   testFirestoreConnection();
+}
+
+function initSafetyDisclaimer() {
+  const modal = document.getElementById('modalSafetyDisclaimer');
+  const btnAccept = document.getElementById('btnAcceptDisclaimer');
+  const btnClose = document.getElementById('btnCloseDisclaimerModal');
+  const checkSafety = document.getElementById('checkAcknowledgeSafety');
+  const btnTopDisclaimer = document.getElementById('btnTopSafetyDisclaimer');
+  const btnHealthDisclaimer = document.getElementById('btnHealthSafetyDisclaimer');
+
+  if (!modal) return;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const forceShow = urlParams.get('disclaimer') === '1';
+  const hasAccepted = localStorage.getItem('paceplot_disclaimer_accepted') === 'true';
+
+  if (!hasAccepted || forceShow) {
+    modal.classList.remove('hidden');
+  }
+
+  function openDisclaimer() {
+    modal.classList.remove('hidden');
+  }
+
+  function closeDisclaimer() {
+    modal.classList.add('hidden');
+  }
+
+  if (btnTopDisclaimer) btnTopDisclaimer.addEventListener('click', openDisclaimer);
+  if (btnHealthDisclaimer) btnHealthDisclaimer.addEventListener('click', openDisclaimer);
+  if (btnClose) btnClose.addEventListener('click', closeDisclaimer);
+
+  if (btnAccept) {
+    btnAccept.addEventListener('click', () => {
+      if (checkSafety && !checkSafety.checked) {
+        speakInstruction("Please check the safety agreement to continue.");
+        checkSafety.focus();
+        return;
+      }
+      localStorage.setItem('paceplot_disclaimer_accepted', 'true');
+      closeDisclaimer();
+      playTurnChime();
+      speakInstruction("Welcome to Pace Plot. Pedestrian safety protocol accepted.");
+    });
+  }
 }
 
 function initBadgesAndPremium() {
@@ -1249,15 +1295,15 @@ function renderRouteChoicesList() {
     );
 
     const card = document.createElement('div');
-    card.className = `p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+    card.className = `p-2 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 flex-shrink-0 min-w-[205px] max-w-[240px] snap-start ${
       isSelected
-        ? 'border-terracotta bg-terracotta/5 dark:bg-terracotta/10 ring-1 ring-terracotta shadow-sm'
+        ? 'border-terracotta bg-terracotta/10 ring-1 ring-terracotta shadow-sm'
         : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:border-terracotta/40'
     }`;
 
     card.innerHTML = `
-      <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ${
           isSelected
             ? 'bg-terracotta text-white shadow-sm'
             : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
@@ -1265,32 +1311,30 @@ function renderRouteChoicesList() {
           ${idx + 1}
         </div>
         <div class="truncate flex-1">
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1">
             <span class="text-xs font-bold text-stone-900 dark:text-white truncate">${route.flavorTitle || route.title}</span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10">${route.safetyScore}</span>
+            <span class="text-[9px] px-1 py-0.2 rounded font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 flex-shrink-0">${route.safetyScore}</span>
           </div>
           <div class="text-[10px] text-stone-500 dark:text-stone-400 flex items-center gap-1 mt-0.5 truncate">
             <span class="font-mono font-bold text-terracotta">${route.distance.toFixed(2)} mi</span>
             <span>·</span>
-            <span>~${route.estMinutes} min</span>
+            <span>~${route.estMinutes}m</span>
             <span>·</span>
-            <span>${route.elevation}</span>
-            <span>·</span>
-            <span class="truncate">${route.traitTag}</span>
+            <span class="truncate">${route.elevation}</span>
           </div>
         </div>
       </div>
 
-      <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button class="btn-save-choice-item w-7 h-7 rounded-lg text-xs flex items-center justify-center transition ${
+      <div class="flex items-center gap-1 flex-shrink-0">
+        <button class="btn-save-choice-item w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition ${
           isSaved
             ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
             : 'text-stone-400 hover:text-terracotta hover:bg-stone-100 dark:hover:bg-stone-700'
         }" title="${isSaved ? 'Saved in Cloud Library' : 'Save Route to Cloud'}" data-index="${idx}">
           <i class="${isSaved ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'}"></i>
         </button>
-        <div class="w-4 flex justify-center text-terracotta">
-          ${isSelected ? '<i class="fa-solid fa-check text-xs font-bold"></i>' : ''}
+        <div class="w-3 flex justify-center text-terracotta">
+          ${isSelected ? '<i class="fa-solid fa-check text-[10px] font-bold"></i>' : ''}
         </div>
       </div>
     `;
@@ -1843,6 +1887,30 @@ function setupUIHandlers() {
   if (sheetDragHandle) sheetDragHandle.addEventListener('click', () => setSheetCollapsed(!isSheetCollapsed));
   if (btnToggleSheet) btnToggleSheet.addEventListener('click', () => setSheetCollapsed(!isSheetCollapsed));
   if (btnExpandFromCompact) btnExpandFromCompact.addEventListener('click', () => setSheetCollapsed(false));
+
+  // Toggle Detailed Drawer (Elevation Profile, Surface Filters & Pace Coach)
+  const btnToggleDetailedDrawer = document.getElementById('btnToggleDetailedDrawer');
+  const sheetExpandedDetails = document.getElementById('sheetExpandedDetails');
+  const btnDrawerChevron = document.getElementById('btnDrawerChevron');
+  const btnDrawerToggleLabel = document.getElementById('btnDrawerToggleLabel');
+
+  if (btnToggleDetailedDrawer && sheetExpandedDetails) {
+    btnToggleDetailedDrawer.addEventListener('click', () => {
+      const isHidden = sheetExpandedDetails.classList.contains('hidden');
+      if (isHidden) {
+        sheetExpandedDetails.classList.remove('hidden');
+        if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-down text-[10px] text-terracotta';
+        if (btnDrawerToggleLabel) btnDrawerToggleLabel.textContent = 'Hide';
+        btnToggleDetailedDrawer.classList.add('bg-terracotta/10', 'border-terracotta/30', 'text-terracotta');
+        speakInstruction("Expanded elevation profile, turn list, and terrain filters.");
+      } else {
+        sheetExpandedDetails.classList.add('hidden');
+        if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-up text-[10px] text-stone-400';
+        if (btnDrawerToggleLabel) btnDrawerToggleLabel.textContent = 'Details';
+        btnToggleDetailedDrawer.classList.remove('bg-terracotta/10', 'border-terracotta/30', 'text-terracotta');
+      }
+    });
+  }
 
   // Voice toggle
   const audioVoiceToggleBtn = document.getElementById('audioVoiceToggle');

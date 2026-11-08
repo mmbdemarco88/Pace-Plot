@@ -98,10 +98,10 @@
     }
   </style>
 </head>
-<body class="bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-2 sm:p-6 transition-colors duration-200">
+<body class="bg-stone-950 sm:bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-0 sm:p-4 transition-colors duration-200">
 
-  <!-- Desktop Top Bar: Prototype Controls -->
-  <header class="w-full max-w-5xl mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-stone-800/90 text-stone-200 rounded-xl backdrop-blur border border-stone-700/60 shadow-lg text-sm">
+  <!-- Desktop Top Bar: Prototype Controls (Hidden on mobile screens) -->
+  <header class="w-full max-w-5xl mb-2.5 hidden sm:flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-stone-800/90 text-stone-200 rounded-xl backdrop-blur border border-stone-700/60 shadow-lg text-sm">
     <div class="flex items-center gap-2">
       <div class="w-7 h-7 rounded-lg bg-terracotta flex items-center justify-center text-white font-bold text-xs shadow-md">
         <i class="fa-solid fa-person-running"></i>
@@ -126,25 +126,31 @@
 
     <!-- Viewport & Mode Toggles -->
     <div class="flex items-center gap-2">
+      <!-- Safety Agreement Modal Button -->
+      <button id="btnTopSafetyDisclaimer" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs text-amber-300 flex items-center gap-1.5 transition font-medium border border-stone-600 shadow-sm cursor-pointer" title="Review Pedestrian Safety Agreement">
+        <i class="fa-solid fa-shield-halved text-terracotta"></i>
+        <span>Safety Terms</span>
+      </button>
+
       <!-- Google Auth Button (Firebase) -->
-      <button id="btnGoogleAuth" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs text-stone-200 flex items-center gap-1.5 transition font-medium border border-stone-600 shadow-sm" title="Google Account">
+      <button id="btnGoogleAuth" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs text-stone-200 flex items-center gap-1.5 transition font-medium border border-stone-600 shadow-sm cursor-pointer" title="Google Account">
         <i class="fa-brands fa-google text-terracotta"></i>
         <span id="googleAuthLabel">Sign In</span>
       </button>
 
-      <button id="toggleDeviceFrame" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs flex items-center gap-1.5 transition">
+      <button id="toggleDeviceFrame" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs flex items-center gap-1.5 transition cursor-pointer">
         <i class="fa-solid fa-mobile-screen"></i>
         <span id="frameModeText">Fullscreen</span>
       </button>
 
-      <button id="toggleTheme" class="w-8 h-8 rounded-lg bg-stone-700 hover:bg-stone-600 flex items-center justify-center text-stone-200 transition" title="Toggle Theme">
+      <button id="toggleTheme" class="w-8 h-8 rounded-lg bg-stone-700 hover:bg-stone-600 flex items-center justify-center text-stone-200 transition cursor-pointer" title="Toggle Theme">
         <i id="themeIcon" class="fa-solid fa-moon"></i>
       </button>
     </div>
   </header>
 
-  <!-- Prototype Container (Switches between Mobile Frame and Full-Width) -->
-  <main id="appContainer" class="w-full max-w-[420px] h-[840px] max-h-[92vh] bg-cream dark:bg-stone-900 rounded-[36px] shadow-2xl border-[8px] border-stone-800 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
+  <!-- Prototype Container (Adaptive: Fullscreen Native Android on mobile, Phone Frame on Desktop) -->
+  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-900 rounded-none sm:rounded-[36px] shadow-2xl border-0 sm:border-[8px] border-stone-800 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
     
     <!-- Google Maps Platform Quota Banner (Demo Key Protection) -->
     <div id="gmpQuotaBanner" class="hidden bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2 text-[11px] text-center sticky top-0 z-50 shadow-sm">
@@ -379,11 +385,11 @@
           </div>
         </div>
 
-        <!-- Collapsible Bottom Planning Sheet (Sleek, flexible, easy to collapse) -->
-        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl p-4 shadow-2xl z-30 transition-all duration-300 flex-shrink-0">
+        <!-- Collapsible Bottom Planning Sheet (Streamlined One-Screen Experience) -->
+        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl p-3 sm:p-4 shadow-2xl z-30 transition-all duration-300 flex-shrink-0 max-h-[65%] overflow-y-auto">
           
           <!-- Clickable Sheet Drag Handle / Toggle Bar -->
-          <div id="sheetDragHandle" class="w-full flex items-center justify-center py-1 cursor-pointer group">
+          <div id="sheetDragHandle" class="w-full flex items-center justify-center py-1 cursor-pointer group" title="Swipe or tap to toggle drawer">
             <div class="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 group-hover:bg-terracotta rounded-full transition"></div>
           </div>
 
@@ -400,197 +406,204 @@
               <h3 id="compactRouteTitle" class="text-xs font-bold text-stone-800 dark:text-stone-200 truncate mt-0.5">West Creek Greenway Safe Loop</h3>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button id="compactBtnStartNav" class="px-3 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center gap-1 shadow-sm transition">
+              <button id="compactBtnStartNav" class="px-3 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center gap-1 shadow-sm transition cursor-pointer">
                 <i id="compactBtnNavIcon" class="fa-solid fa-circle-play"></i>
                 <span>Nav</span>
               </button>
-              <button id="btnExpandFromCompact" class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-600 dark:text-stone-300 flex items-center justify-center text-xs transition" title="Show Route Details">
+              <button id="btnExpandFromCompact" class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-600 dark:text-stone-300 flex items-center justify-center text-xs transition cursor-pointer" title="Show Route Details">
                 <i class="fa-solid fa-sliders"></i>
               </button>
             </div>
           </div>
 
-          <!-- Full Expanded Planning Controls -->
-          <div id="sheetFullContent" class="space-y-3.5 pt-1">
-            <!-- Safety & Route Overview Header -->
+          <!-- Full Planning Controls (Streamlined One-Screen Layout) -->
+          <div id="sheetFullContent" class="space-y-2.5 pt-1">
+            <!-- 1. Route Summary Row (Always Visible) -->
             <div class="flex items-center justify-between">
-              <div>
-                <div class="flex items-center gap-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
-                  <span class="text-terracotta uppercase tracking-wider font-extrabold text-[11px]">Safe AI Loop</span>
+              <div class="min-w-0 flex-1 pr-2">
+                <div class="flex items-center gap-1.5 text-[11px] font-semibold text-stone-500 dark:text-stone-400">
+                  <span class="text-terracotta uppercase tracking-wider font-extrabold text-[10px]">Safe AI Loop</span>
                   <span>·</span>
-                  <span class="text-emerald-600 dark:text-emerald-400">9.8 Safety</span>
+                  <span class="text-emerald-600 dark:text-emerald-400 font-bold">9.8 Safety</span>
                   <span>·</span>
                   <span id="routeElevationKicker">+42 ft</span>
                 </div>
-                <h2 id="routeTitle" class="text-base font-extrabold text-stone-900 dark:text-white mt-0.5 truncate max-w-[240px]">West Creek Greenway Safe Loop</h2>
+                <h2 id="routeTitle" class="text-sm font-extrabold text-stone-900 dark:text-white truncate">West Creek Greenway Safe Loop</h2>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-shrink-0">
                 <div class="text-right">
-                  <div id="routeMileageBadge" class="text-xl font-black font-mono text-stone-900 dark:text-white">3.10 <span class="text-xs font-sans font-semibold text-stone-500">mi</span></div>
-                  <p id="estDurationText" class="text-[10px] text-stone-500 dark:text-stone-400">~26 min at 8'30"</p>
+                  <div id="routeMileageBadge" class="text-lg font-black font-mono text-stone-900 dark:text-white leading-tight">3.10 <span class="text-[10px] font-sans font-semibold text-stone-500">mi</span></div>
+                  <p id="estDurationText" class="text-[10px] text-stone-500 dark:text-stone-400 leading-none">~26 min at 8'30"</p>
                 </div>
-                <button id="btnToggleSheet" class="w-7 h-7 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition" title="Collapse Drawer">
+                <button id="btnToggleSheet" class="w-7 h-7 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition cursor-pointer" title="Collapse Drawer">
                   <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
                 </button>
               </div>
             </div>
 
-            <!-- Quick 1-Tap Distance Presets (Segmented control) -->
-            <div>
-              <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-                <span>Select Loop Distance:</span>
-                <button id="btnToggleCustomDist" class="text-[11px] text-terracotta hover:underline font-bold">Custom Slider</button>
-              </div>
-              <div class="grid grid-cols-4 gap-1.5 bg-stone-100 dark:bg-stone-800/80 p-1 rounded-2xl text-xs font-bold text-center">
-                <button class="dist-preset-btn py-1.5 px-2 rounded-xl text-stone-600 dark:text-stone-300 transition" data-dist="1.5">
+            <!-- 2. Loop Distance Preset Chips (Segmented Pill Row) -->
+            <div class="flex items-center gap-1.5">
+              <div class="grid grid-cols-4 gap-1 flex-1 bg-stone-100 dark:bg-stone-800/80 p-0.5 rounded-xl text-xs font-bold text-center">
+                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="1.5">
                   1.5 mi
                 </button>
-                <button class="dist-preset-btn py-1.5 px-2 rounded-xl bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active" data-dist="3.1">
+                <button class="dist-preset-btn py-1 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[11px] cursor-pointer" data-dist="3.1">
                   5K (3.1)
                 </button>
-                <button class="dist-preset-btn py-1.5 px-2 rounded-xl text-stone-600 dark:text-stone-300 transition" data-dist="4.5">
+                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="4.5">
                   4.5 mi
                 </button>
-                <button class="dist-preset-btn py-1.5 px-2 rounded-xl text-stone-600 dark:text-stone-300 transition" data-dist="6.2">
+                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="6.2">
                   10K (6.2)
                 </button>
               </div>
-
-              <!-- Custom Distance Slider (Hidden by default, toggleable) -->
-              <div id="customSliderContainer" class="hidden mt-2 pt-2 border-t border-stone-200 dark:border-stone-800">
-                <div class="flex justify-between text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  <span>Custom Target:</span>
-                  <span id="targetDistanceDisplay" class="font-bold text-terracotta">3.1 miles</span>
-                </div>
-                <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
-              </div>
+              <button id="btnToggleCustomDist" class="px-2 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-[11px] text-terracotta font-bold hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer" title="Custom Slider">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
             </div>
 
-            <!-- Target Pace Coach Segmented Selector -->
+            <!-- Custom Distance Slider (Hidden by default, toggleable) -->
+            <div id="customSliderContainer" class="hidden pt-1 border-t border-stone-200 dark:border-stone-800">
+              <div class="flex justify-between text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">
+                <span>Custom Target:</span>
+                <span id="targetDistanceDisplay" class="font-bold text-terracotta">3.1 miles</span>
+              </div>
+              <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- 3. AI Safe Route Options (Horizontal Swipeable Carousel) -->
             <div>
-              <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-                <span>Target Pace:</span>
-                <span id="targetPaceDisplay" class="font-bold font-mono text-terracotta text-xs">8'30" /mi (Base)</span>
-              </div>
-              <div class="grid grid-cols-4 gap-1.5 bg-stone-100 dark:bg-stone-800/80 p-1 rounded-2xl text-xs font-bold text-center">
-                <button class="pace-preset-btn py-1.5 px-1 rounded-xl text-stone-600 dark:text-stone-300 transition" data-pace="15:00" data-label="Walk">
-                  Walk 15'
-                </button>
-                <button class="pace-preset-btn py-1.5 px-1 rounded-xl text-stone-600 dark:text-stone-300 transition" data-pace="9:45" data-label="Easy">
-                  Easy 9'45"
-                </button>
-                <button class="pace-preset-btn py-1.5 px-1 rounded-xl bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active" data-pace="8:30" data-label="Base">
-                  Base 8'30"
-                </button>
-                <button class="pace-preset-btn py-1.5 px-1 rounded-xl text-stone-600 dark:text-stone-300 transition" data-pace="7:30" data-label="Tempo">
-                  Tempo 7'30"
-                </button>
-              </div>
-            </div>
-
-            <!-- Elevation Profile Mini-Chart -->
-            <div class="bg-stone-100 dark:bg-stone-800/50 p-2.5 rounded-2xl border border-stone-200 dark:border-stone-800">
-              <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
-                <span class="flex items-center gap-1 font-semibold text-stone-700 dark:text-stone-300">
-                  <i class="fa-solid fa-chart-area text-terracotta text-xs"></i> Elevation Profile
-                </span>
-                <span class="font-mono text-[10px]" id="elevProfileStats">+42 ft Gain · 780 ft Max</span>
-              </div>
-              <svg class="w-full h-11" viewBox="0 0 300 44" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#E15A2B" stop-opacity="0.45"/>
-                    <stop offset="100%" stop-color="#E15A2B" stop-opacity="0.02"/>
-                  </linearGradient>
-                </defs>
-                <path id="elevSvgFill" d="M 0 32 Q 40 18 80 24 T 160 14 T 240 28 T 300 20 L 300 44 L 0 44 Z" fill="url(#elevGrad)"/>
-                <path id="elevSvgStroke" d="M 0 32 Q 40 18 80 24 T 160 14 T 240 28 T 300 20" fill="none" stroke="#E15A2B" stroke-width="2.5" stroke-linecap="round"/>
-                <circle id="elevRunnerDot" cx="12" cy="32" r="4.5" fill="#ffffff" stroke="#E15A2B" stroke-width="2.5"/>
-              </svg>
-            </div>
-
-            <!-- Surface & Safety Filters -->
-            <div class="grid grid-cols-3 gap-2 text-xs">
-              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-terracotta bg-terracotta text-white font-semibold text-center transition flex flex-col items-center gap-0.5" data-surface="trail">
-                <i class="fa-solid fa-tree text-xs"></i>
-                <span class="text-[11px]">Greenway</span>
-              </button>
-              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5" data-surface="road">
-                <i class="fa-solid fa-road text-xs"></i>
-                <span class="text-[11px]">Quiet Roads</span>
-              </button>
-              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5" data-surface="lit">
-                <i class="fa-solid fa-lightbulb text-xs"></i>
-                <span class="text-[11px]">Well-Lit Only</span>
-              </button>
-            </div>
-
-            <!-- Zero-Pill Safety Metrics Bar -->
-            <div class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1 pt-0.5">
-              <span id="metricSidewalk" class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-                <i class="fa-solid fa-check text-xs"></i> 98% Sidewalks
-              </span>
-              <span id="metricLit" class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
-                <i class="fa-solid fa-bolt text-xs"></i> 100% Lit Streets
-              </span>
-              <span id="metricGain" class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold">
-                <i class="fa-solid fa-mountain text-xs"></i> +42 ft Gain
-              </span>
-            </div>
-
-            <!-- 3-4 AI Safe Route Choices (Multi-Option Selector) -->
-            <div class="space-y-2 pt-1 border-t border-stone-200 dark:border-stone-800">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span class="text-xs font-black uppercase tracking-wider text-stone-900 dark:text-white">AI Safe Route Options</span>
-                  <span id="routeChoicesBadge" class="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-200 dark:bg-stone-700 font-bold text-stone-700 dark:text-stone-300">4 Generated</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span class="text-[10px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">AI Route Choices</span>
+                  <span id="routeChoicesBadge" class="text-[9px] px-1.5 py-0.2 rounded-md bg-stone-200 dark:bg-stone-700 font-bold text-stone-700 dark:text-stone-300">4 Options</span>
                 </div>
-                <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-xs font-extrabold flex items-center gap-1 transition active:scale-95" title="Generate fresh alternative routes">
-                  <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
-                  <span>Redo Choices</span>
+                <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-[11px] font-extrabold flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Generate fresh alternative routes">
+                  <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+                  <span>Redo</span>
                 </button>
               </div>
 
-              <!-- Route Choice Cards List (Populated and selected in real-time) -->
-              <div id="routeChoicesList" class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-                <!-- Rendered dynamically by main.js -->
+              <!-- Route Choice Horizontal Carousel -->
+              <div id="routeChoicesList" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x">
+                <!-- Rendered dynamically as horizontal snap cards -->
               </div>
             </div>
 
-            <!-- Turn-by-Turn Audio Guidance Preview (Collapsible Accordion) -->
-            <div class="border border-stone-200 dark:border-stone-800 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 overflow-hidden">
-              <button id="btnToggleManeuversList" class="w-full py-2 px-3 flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition">
-                <span class="flex items-center gap-1.5">
-                  <i class="fa-solid fa-volume-high text-terracotta text-xs"></i>
-                  <span>Turn-by-Turn Audio Guidance</span>
-                  <span id="maneuversCountBadge" class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300">6 turns</span>
+            <!-- 4. Collapsible Detailed Drawer (Elevation Profile, Pace, Surface & Turns) -->
+            <div id="sheetExpandedDetails" class="hidden space-y-2.5 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <!-- Target Pace Coach Segmented Selector -->
+              <div>
+                <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  <span>Target Pace:</span>
+                  <span id="targetPaceDisplay" class="font-bold font-mono text-terracotta text-xs">8'30" /mi (Base)</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1 bg-stone-100 dark:bg-stone-800/80 p-0.5 rounded-xl text-xs font-bold text-center">
+                  <button class="pace-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="15:00" data-label="Walk">
+                    Walk 15'
+                  </button>
+                  <button class="pace-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="9:45" data-label="Easy">
+                    Easy 9'45"
+                  </button>
+                  <button class="pace-preset-btn py-1 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[11px] cursor-pointer" data-pace="8:30" data-label="Base">
+                    Base 8'30"
+                  </button>
+                  <button class="pace-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="7:30" data-label="Tempo">
+                    Tempo 7'30"
+                  </button>
+                </div>
+              </div>
+
+              <!-- Elevation Profile Mini-Chart -->
+              <div class="bg-stone-100 dark:bg-stone-800/50 p-2 rounded-2xl border border-stone-200 dark:border-stone-800">
+                <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                  <span class="flex items-center gap-1 font-semibold text-stone-700 dark:text-stone-300">
+                    <i class="fa-solid fa-chart-area text-terracotta text-xs"></i> Elevation Profile
+                  </span>
+                  <span class="font-mono text-[10px]" id="elevProfileStats">+42 ft Gain · 780 ft Max</span>
+                </div>
+                <svg class="w-full h-10" viewBox="0 0 300 44" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#E15A2B" stop-opacity="0.45"/>
+                      <stop offset="100%" stop-color="#E15A2B" stop-opacity="0.02"/>
+                    </linearGradient>
+                  </defs>
+                  <path id="elevSvgFill" d="M 0 32 Q 40 18 80 24 T 160 14 T 240 28 T 300 20 L 300 44 L 0 44 Z" fill="url(#elevGrad)"/>
+                  <path id="elevSvgStroke" d="M 0 32 Q 40 18 80 24 T 160 14 T 240 28 T 300 20" fill="none" stroke="#E15A2B" stroke-width="2.5" stroke-linecap="round"/>
+                  <circle id="elevRunnerDot" cx="12" cy="32" r="4.5" fill="#ffffff" stroke="#E15A2B" stroke-width="2.5"/>
+                </svg>
+              </div>
+
+              <!-- Surface & Safety Filters -->
+              <div class="grid grid-cols-3 gap-1.5 text-xs">
+                <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-terracotta bg-terracotta text-white font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="trail">
+                  <i class="fa-solid fa-tree text-xs"></i>
+                  <span class="text-[10px]">Greenway</span>
+                </button>
+                <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="road">
+                  <i class="fa-solid fa-road text-xs"></i>
+                  <span class="text-[10px]">Quiet Roads</span>
+                </button>
+                <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="lit">
+                  <i class="fa-solid fa-lightbulb text-xs"></i>
+                  <span class="text-[10px]">Well-Lit Only</span>
+                </button>
+              </div>
+
+              <!-- Zero-Pill Safety Metrics Bar -->
+              <div class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
+                <span id="metricSidewalk" class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                  <i class="fa-solid fa-check text-xs"></i> 98% Sidewalks
                 </span>
-                <i id="maneuversChevron" class="fa-solid fa-chevron-down text-[10px] text-stone-400 transition-transform"></i>
-              </button>
-              <div id="maneuversListContainer" class="hidden px-2.5 pb-2.5 space-y-1.5 border-t border-stone-200/60 dark:border-stone-700/60 pt-2 max-h-48 overflow-y-auto">
-                <!-- Rendered dynamically with speaker preview buttons -->
+                <span id="metricLit" class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
+                  <i class="fa-solid fa-bolt text-xs"></i> 100% Lit Streets
+                </span>
+                <span id="metricGain" class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold text-[11px]">
+                  <i class="fa-solid fa-mountain text-xs"></i> +42 ft Gain
+                </span>
               </div>
-            </div>
 
-            <!-- Primary Command Actions -->
-            <div class="space-y-2 pt-1">
-              <button id="btnStartNavigation" class="w-full h-12 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-[0.98] transition-all">
-                <i id="btnNavIcon" class="fa-solid fa-circle-play text-base"></i>
-                <span id="btnNavLabel">Start Safe Voice Nav</span>
-              </button>
+              <!-- Turn-by-Turn Audio Guidance Preview -->
+              <div class="border border-stone-200 dark:border-stone-800 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 overflow-hidden">
+                <button id="btnToggleManeuversList" class="w-full py-1.5 px-3 flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition cursor-pointer">
+                  <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-volume-high text-terracotta text-xs"></i>
+                    <span>Turn-by-Turn Audio Guidance</span>
+                    <span id="maneuversCountBadge" class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300">6 turns</span>
+                  </span>
+                  <i id="maneuversChevron" class="fa-solid fa-chevron-down text-[10px] text-stone-400 transition-transform"></i>
+                </button>
+                <div id="maneuversListContainer" class="hidden px-2.5 pb-2.5 space-y-1.5 border-t border-stone-200/60 dark:border-stone-700/60 pt-2 max-h-40 overflow-y-auto">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
 
-              <div class="grid grid-cols-2 gap-2">
-                <button id="btnGenerateAiRoute" class="py-2.5 px-3 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <button id="btnGenerateAiRoute" class="py-2 px-3 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
                   <i class="fa-solid fa-wand-magic-sparkles text-terracotta"></i>
                   <span>Re-Map AI Loop</span>
                 </button>
-
-                <button id="btnSaveRouteToCloud" class="py-2.5 px-3 rounded-xl bg-stone-100 dark:bg-stone-800/80 hover:bg-stone-200 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition">
+                <button id="btnSaveRouteToCloud" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-800/80 hover:bg-stone-200 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition cursor-pointer">
                   <i class="fa-solid fa-cloud-arrow-up text-terracotta"></i>
                   <span id="saveRouteToCloudLabel">Save to Cloud</span>
                 </button>
               </div>
+            </div>
+
+            <!-- 5. Primary Command Action Row (Always Visible on One Screen) -->
+            <div class="flex items-center gap-2 pt-0.5">
+              <button id="btnStartNavigation" class="flex-1 h-11 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-[0.98] transition-all cursor-pointer">
+                <i id="btnNavIcon" class="fa-solid fa-circle-play text-base"></i>
+                <span id="btnNavLabel">Start Safe Voice Nav</span>
+              </button>
+              <button id="btnToggleDetailedDrawer" class="h-11 px-3 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition cursor-pointer flex-shrink-0" title="Toggle Elevation Profile, Turns & Surface Filters">
+                <i class="fa-solid fa-chart-area text-terracotta"></i>
+                <span id="btnDrawerToggleLabel" class="hidden sm:inline">Details</span>
+                <i id="btnDrawerChevron" class="fa-solid fa-chevron-up text-[10px] text-stone-400"></i>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -794,9 +807,14 @@
             <h2 class="text-lg font-black text-stone-900 dark:text-white">Health & Smartwatches</h2>
             <p class="text-xs text-stone-500">Android Health Connect & Bluetooth Sensors</p>
           </div>
-          <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
-            <i class="fa-solid fa-link text-[10px]"></i> Active
-          </span>
+          <div class="flex items-center gap-1.5">
+            <button id="btnHealthSafetyDisclaimer" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 flex items-center gap-1 transition cursor-pointer" title="View Pedestrian Safety Agreement">
+              <i class="fa-solid fa-shield-halved text-[10px]"></i> Safety Protocol
+            </button>
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+              <i class="fa-solid fa-link text-[10px]"></i> Active
+            </span>
+          </div>
         </div>
 
         <!-- Health Connect Hub Card -->
@@ -1435,7 +1453,92 @@
       </div>
     </div>
 
-    <!-- Achievement Badge Unlock Notification Toast -->
+    <!-- First-Launch Safety Disclaimer & Onboarding Screen ("Pace Plot Safety Agreement") -->
+    <div id="modalSafetyDisclaimer" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div class="w-full max-w-md bg-stone-900 text-stone-100 rounded-3xl border border-stone-700/80 shadow-2xl p-4 sm:p-5 space-y-3.5 max-h-[92vh] overflow-y-auto animate-in zoom-in-95">
+        
+        <!-- Header with Shield Icon & Badge -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-terracotta/20 text-terracotta border border-terracotta/30 flex items-center justify-center text-xl flex-shrink-0 shadow-inner">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[9px] font-black uppercase tracking-wider text-terracotta bg-terracotta/10 px-2 py-0.5 rounded-full border border-terracotta/20">Official Safety Protocol</span>
+              </div>
+              <h2 class="text-base font-extrabold text-white mt-0.5">Pace Plot Safety Agreement</h2>
+              <p class="text-[11px] text-stone-400">Pedestrian right-of-way, road rules & runner awareness</p>
+            </div>
+          </div>
+          <button id="btnCloseDisclaimerModal" class="w-7 h-7 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-xs transition cursor-pointer flex-shrink-0" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- 4 Safety Pillars -->
+        <div class="space-y-2 text-xs">
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-traffic-light"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">Pedestrian Signals & Right-of-Way</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">Pace Plot loops prioritize lit sidewalks and quiet paths, but runners must always obey street signals, crosswalk rules, and yield to vehicular traffic.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-headphones-simple"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">Situational Hearing & Ambient Audio</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">Runners are strongly encouraged to use bone-conduction headphones, ambient passthrough mode, or keep one ear open so emergency sirens and approaching vehicles remain audible.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-vest"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">Low-Light & Night Visibility</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">Wear retroreflective apparel, clip-on safety strobes, or headlamps when running before dawn, at dusk, or after dark along roadway shoulders.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">SafeGuard Companion Disclaimer</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">SafeGuard live tracking and fall detection are assistive safety companion tools. They do not replace certified 911 local emergency response dispatch services.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkbox Agreement -->
+        <label class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-800/60 border border-stone-700 cursor-pointer select-none">
+          <input type="checkbox" id="checkAcknowledgeSafety" checked class="mt-0.5 accent-terracotta w-4 h-4 rounded cursor-pointer">
+          <span class="text-[11px] text-stone-300 leading-snug">
+            I understand and accept these pedestrian safety responsibilities. I agree to exercise caution, situational awareness, and yield to vehicular traffic on all routes.
+          </span>
+        </label>
+
+        <!-- Accept Button -->
+        <button id="btnAcceptDisclaimer" class="w-full py-3 px-4 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-95 transition cursor-pointer">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>I Agree · Enter Pace Plot</span>
+        </button>
+
+        <div class="text-center text-[10px] text-stone-500">
+          Stride Circuit LLC · Android Mobile Protocol v2.4 · Reviewable anytime in settings
+        </div>
+
+      </div>
+    </div>
     <div id="badgeUnlockToast" class="hidden fixed top-5 left-4 right-4 z-50 max-w-sm mx-auto bg-stone-950/95 text-white p-3 rounded-2xl border border-amber-500/50 shadow-2xl backdrop-blur-xl flex items-center gap-3 animate-in slide-in-from-top-4">
       <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg flex-shrink-0 animate-bounce">
         <i id="toastBadgeIcon" class="fa-solid fa-trophy"></i>
