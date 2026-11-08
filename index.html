@@ -178,6 +178,10 @@
       </div>
 
       <div class="flex items-center gap-1.5">
+        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-sm hover:opacity-95 transition active:scale-95" title="Upgrade to Pace Plot PRO">
+          <i class="fa-solid fa-crown text-[9px]"></i>
+          <span id="headerPremiumLabel">PRO</span>
+        </button>
         <button id="btnMobileAuth" class="px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center gap-1 transition text-xs font-medium border border-stone-200 dark:border-stone-700" title="Account">
           <i class="fa-brands fa-google text-terracotta text-[10px]"></i>
           <span id="mobileAuthLabel" class="text-[10px]">Sign In</span>
@@ -946,6 +950,40 @@
           </div>
         </div>
 
+        <!-- Runner Achievements & Badges System -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500/20 to-terracotta/20 text-terracotta flex items-center justify-center text-sm shadow-sm">
+                <i class="fa-solid fa-trophy"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">Achievements & Badges</h3>
+                <p class="text-[10px] text-stone-500 dark:text-stone-400">Milestones unlocked through verified safe runs</p>
+              </div>
+            </div>
+            <span id="badgesUnlockedBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              4 / 10 Unlocked
+            </span>
+          </div>
+
+          <!-- Overall Milestone Progress Bar -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-[10px] text-stone-500 dark:text-stone-400 font-semibold">
+              <span>Runner Milestone Progress</span>
+              <span id="badgesProgressPct" class="font-mono text-terracotta font-bold">40%</span>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden">
+              <div id="badgesProgressBar" class="h-full bg-gradient-to-r from-amber-500 to-terracotta rounded-full transition-all duration-500" style="width: 40%;"></div>
+            </div>
+          </div>
+
+          <!-- Badges Grid (10 athletic achievements) -->
+          <div id="badgesGrid" class="grid grid-cols-2 gap-2 pt-1">
+            <!-- Dynamically populated or rendered -->
+          </div>
+        </div>
+
         <!-- Recorded Workouts History (Firestore Sync) -->
         <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
@@ -966,6 +1004,124 @@
               </div>
               <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Completed</span>
             </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CUSTOM 4-WEEK ATHLETIC TRAINING PLAN GENERATOR -->
+        <!-- ========================================== -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-terracotta/10 text-terracotta flex items-center justify-center text-sm shadow-sm">
+                <i class="fa-solid fa-person-running"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">Training Plan Generator</h3>
+                <p class="text-[10px] text-stone-500 dark:text-stone-400">Custom 4-week block calibrated to your historical pace</p>
+              </div>
+            </div>
+            <span id="trainingGoalBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-terracotta/15 text-terracotta">
+              5K Target
+            </span>
+          </div>
+
+          <!-- Goal Distance Selector Buttons -->
+          <div>
+            <label class="block text-[11px] font-semibold text-stone-600 dark:text-stone-300 mb-1.5">Select Target Distance or Goal:</label>
+            <div class="grid grid-cols-4 gap-1.5 text-xs font-bold text-center">
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-terracotta text-white shadow-sm transition cursor-pointer active" data-goal="5k">
+                5K (3.1m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="10k">
+                10K (6.2m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="half">
+                Half (13.1m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="base">
+                Base Build
+              </button>
+            </div>
+          </div>
+
+          <!-- Historical Pace Intelligence & Projected Race Finish Banner -->
+          <div class="p-3 rounded-2xl bg-gradient-to-br from-stone-50 to-amber-500/5 dark:from-stone-900/60 dark:to-stone-800 border border-stone-200/80 dark:border-stone-700/80 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-gauge-high text-terracotta text-xs"></i>
+                <span class="font-bold text-stone-900 dark:text-white">Detected Base Pace:</span>
+                <span id="planBasePaceDisplay" class="font-mono font-black text-terracotta">8'27"/mi</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-stone-500">Predicted Finish:</span>
+                <span id="planPredictedFinish" class="font-mono font-extrabold text-stone-900 dark:text-white ml-1">26m 14s</span>
+              </div>
+            </div>
+
+            <!-- Calculated Periodization Training Zones -->
+            <div class="grid grid-cols-3 gap-1.5 pt-1 text-center text-[10px]">
+              <div class="p-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                <p class="text-stone-400 font-medium">Easy / Zone 2</p>
+                <p id="zoneEasyPace" class="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">9'22"/mi</p>
+              </div>
+              <div class="p-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                <p class="text-stone-400 font-medium">Tempo / Zone 3</p>
+                <p id="zoneTempoPace" class="font-mono font-bold text-amber-500 mt-0.5">8'42"/mi</p>
+              </div>
+              <div class="p-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                <p class="text-stone-400 font-medium">Speed / Zone 4</p>
+                <p id="zoneIntervalPace" class="font-mono font-bold text-rose-500 mt-0.5">8'02"/mi</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4-Week Block Selector (Tabs) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] font-bold text-stone-700 dark:text-stone-300">4-Week Training Schedule</span>
+              <span id="weekVolumeBadge" class="text-[10px] font-mono font-bold text-stone-500">Week 1: 12.5 mi</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 p-1 bg-stone-100 dark:bg-stone-900/80 rounded-xl text-xs font-bold text-center">
+              <button class="btn-plan-week py-1.5 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active" data-week="0">
+                Week 1
+              </button>
+              <button class="btn-plan-week py-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 transition" data-week="1">
+                Week 2
+              </button>
+              <button class="btn-plan-week py-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 transition" data-week="2">
+                Week 3
+              </button>
+              <button class="btn-plan-week py-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 transition" data-week="3">
+                Week 4
+              </button>
+            </div>
+          </div>
+
+          <!-- Week Focus Headline -->
+          <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/30 border border-stone-100 dark:border-stone-700 flex items-center justify-between text-xs">
+            <div>
+              <h4 id="planWeekHeadline" class="font-bold text-stone-900 dark:text-white">Week 1: Aerobic Base & Rhythm</h4>
+              <p id="planWeekFocus" class="text-[10px] text-stone-500">Establish aerobic volume & neuromuscular cadence</p>
+            </div>
+            <span id="planWeekCompletionStatus" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">2 / 4 Done</span>
+          </div>
+
+          <!-- Day-by-Day Workouts List (Interactive with 'Map Route' 1-click execution) -->
+          <div id="planWorkoutsList" class="space-y-2">
+            <!-- Populated dynamically by trainingPlan.js -->
+          </div>
+
+          <!-- Plan Action Utilities -->
+          <div class="flex items-center gap-2 pt-1 border-t border-stone-100 dark:border-stone-700">
+            <button id="btnRegeneratePlan" class="flex-1 py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-700/80 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-arrows-rotate text-[11px] text-terracotta"></i>
+              <span>Recalibrate from Workouts</span>
+            </button>
+            <button id="btnExportTrainingPlan" class="py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition" title="Export Plan to Calendar or GPX">
+              <i class="fa-solid fa-calendar-plus text-[11px]"></i>
+              <span>Export Block</span>
+            </button>
           </div>
         </div>
       </section>
@@ -1170,6 +1326,125 @@
     <!-- Android Gesture Pill / Home Bar -->
     <div class="w-full h-4 bg-white dark:bg-stone-900 flex items-center justify-center pb-1 z-30">
       <div class="w-32 h-1 bg-stone-300 dark:bg-stone-700 rounded-full"></div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- UPGRADE TO PREMIUM MODAL OVERLAY -->
+    <!-- ========================================== -->
+    <div id="modalUpgradePremium" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4 transition-all">
+      <div class="bg-stone-900 border border-stone-700 text-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-4">
+        
+        <!-- Close button -->
+        <button id="btnCloseUpgradeModal" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+
+        <!-- Header with Golden Crown Icon -->
+        <div class="text-center pt-2 space-y-1.5">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-terracotta text-white flex items-center justify-center text-2xl shadow-xl shadow-terracotta/30 animate-pulse">
+            <i class="fa-solid fa-crown"></i>
+          </div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-wider">
+            <i class="fa-solid fa-sparkles text-[9px]"></i>
+            <span>Pace Plot PRO</span>
+          </div>
+          <h2 class="text-lg font-black text-white">Elevate Every Stride</h2>
+          <p class="text-xs text-stone-400 max-w-xs mx-auto">
+            Uncompromised runner safety, real-time family tracking, and advanced meteorological radar.
+          </p>
+        </div>
+
+        <!-- Subscription Tier Switcher (Monthly vs Annual) -->
+        <div class="bg-stone-950/80 p-1 rounded-2xl border border-stone-800 flex items-center text-xs font-bold">
+          <button id="btnTierAnnual" class="flex-1 py-2 px-2 rounded-xl bg-terracotta text-white shadow-md transition flex items-center justify-center gap-1.5">
+            <span>Annual</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded font-extrabold bg-emerald-500 text-stone-950">SAVE 40%</span>
+          </button>
+          <button id="btnTierMonthly" class="flex-1 py-2 px-2 rounded-xl text-stone-400 hover:text-white transition flex items-center justify-center">
+            <span>Monthly</span>
+          </button>
+        </div>
+
+        <!-- Price Box -->
+        <div class="text-center py-1">
+          <div class="flex items-baseline justify-center gap-1 font-mono">
+            <span id="tierPriceLarge" class="text-3xl font-black text-white">$4.16</span>
+            <span id="tierPricePeriod" class="text-xs text-stone-400 font-semibold">/ month</span>
+          </div>
+          <p id="tierBillingDetail" class="text-[11px] text-stone-400 mt-0.5">Billed annually at $49.99/year (7-day free trial)</p>
+        </div>
+
+        <!-- Exclusive Premium Features Highlights -->
+        <div class="space-y-2.5 text-xs pt-1">
+          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Real-Time Family Live Tracking</h4>
+              <p class="text-[11px] text-stone-400">Share live GPS beacon, speed, and battery with loved ones. No app download required for them.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-cloud-bolt"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Advanced Weather & AQI Radar</h4>
+              <p class="text-[11px] text-stone-400">Minute-by-minute rain radar, wind gusts, UV index, and air quality index overlay along your route.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Unlimited Cloud Storage & Offline Maps</h4>
+              <p class="text-[11px] text-stone-400">Save unlimited custom loop corridors with instant GPX export to Apple Watch & Garmin.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Automated Fall Detection & Priority SOS</h4>
+              <p class="text-[11px] text-stone-400">Instant accelerometer immobility alerts dispatched with GPS coordinates to your emergency contacts.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Button & Trial CTA -->
+        <div class="space-y-2 pt-1">
+          <button id="btnSubscribePro" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-terracotta hover:opacity-95 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-terracotta/30 active:scale-95 transition cursor-pointer">
+            <i class="fa-solid fa-bolt"></i>
+            <span id="btnSubscribeLabel">Start 7-Day Free Trial ($49.99/yr)</span>
+          </button>
+          <div class="flex items-center justify-center gap-3 text-[10px] text-stone-400">
+            <span>Cancel anytime</span>
+            <span>•</span>
+            <button id="btnRestorePurchases" class="hover:text-white underline">Restore Purchase</button>
+            <span>•</span>
+            <span id="tierDiscountBadge" class="text-emerald-400 font-bold">40% Off Annual</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Achievement Badge Unlock Notification Toast -->
+    <div id="badgeUnlockToast" class="hidden fixed top-5 left-4 right-4 z-50 max-w-sm mx-auto bg-stone-950/95 text-white p-3 rounded-2xl border border-amber-500/50 shadow-2xl backdrop-blur-xl flex items-center gap-3 animate-in slide-in-from-top-4">
+      <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg flex-shrink-0 animate-bounce">
+        <i id="toastBadgeIcon" class="fa-solid fa-trophy"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] font-black uppercase tracking-wider text-amber-400">Achievement Unlocked!</div>
+        <h4 id="toastBadgeTitle" class="text-xs font-bold text-white truncate">Early Bird</h4>
+        <p id="toastBadgeDesc" class="text-[10px] text-stone-400 truncate">Run logged before 7:00 AM</p>
+      </div>
     </div>
   </main>
 

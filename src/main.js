@@ -19,6 +19,30 @@ import {
   addRunActivity
 } from './firebase.js';
 import { fetchRouteWeather } from './weather.js';
+import {
+  BADGES_CONFIG,
+  getUnlockedBadges,
+  renderBadgesGrid,
+  evaluateBadgesFromWorkouts,
+  unlockBadge
+} from './badges.js';
+import {
+  isPremiumUser,
+  setPremiumStatus,
+  openUpgradeModal,
+  closeUpgradeModal,
+  setupPremiumListeners,
+  updatePremiumUI
+} from './premium.js';
+import {
+  generate4WeekPlan,
+  calculatePaces,
+  formatPace,
+  formatTime,
+  saveActivePlan,
+  loadActivePlan,
+  EVENT_GOALS
+} from './trainingPlan.js';
 
 // ----------------------------------------------------
 // Google Maps Quota Handling (Tier 1 & 2 Defense)
@@ -202,16 +226,197 @@ let speechVoices = [];
 let selectedVoice = null;
 let currentUtterance = null; // Retain reference to prevent browser GC
 
+// Custom Training Plan State
+let currentGoalId = '5k';
+let currentPlanWeek = 0;
+let activeTrainingPlan = null;
+
 // ----------------------------------------------------
 // Initialize Application
 // ----------------------------------------------------
 function startApp() {
   setupClock();
   initSpeechSynthesis();
+  initBadgesAndPremium();
+  initTrainingPlan();
   setupUIHandlers();
   initGoogleMaps();
   setupFirebaseAuth();
   testFirestoreConnection();
+}
+
+function initBadgesAndPremium() {
+  // Render Badges grid and attach audio feedback
+  renderBadgesGrid((badge, isUnlocked) => {
+    if (isUnlocked) {
+      playTurnChime();
+      speakInstruction(`Achievement unlocked: ${badge.title}. ${badge.subtitle}`);
+    } else {
+      speakInstruction(`Locked milestone: ${badge.title}. Requirement: ${badge.requirement}`);
+    }
+  });
+
+  // Setup Premium Subscription Tiers and listeners
+  setupPremiumListeners({
+    onSuccess: (tier) => {
+      playTurnChime();
+      speakInstruction(`Welcome to Pace Plot PRO! Your ${tier} membership is active. All live tracking and weather radar features unlocked.`);
+    },
+    onRestore: () => {
+      playTurnChime();
+      speakInstruction("Pace Plot PRO subscription restored successfully.");
+    }
+  });
+}
+
+function getHistoricalPaceSeconds() {
+  return currentPaceSeconds || 507; // default 8'27"/mi (507s)
+}
+
+function initTrainingPlan() {
+  const basePaceSec = getHistoricalPaceSeconds();
+  const savedPlan = loadActivePlan();
+  if (savedPlan && savedPlan.goalId === currentGoalId) {
+    activeTrainingPlan = savedPlan;
+  } else {
+    activeTrainingPlan = generate4WeekPlan(currentGoalId, basePaceSec);
+    saveActivePlan(activeTrainingPlan);
+  }
+
+  updateTrainingPlanUI();
+}
+
+function updateTrainingPlanUI() {
+  if (!activeTrainingPlan) return;
+
+  const basePaceDisplay = document.getElementById('planBasePaceDisplay');
+  const predictedFinish = document.getElementById('planPredictedFinish');
+  const zoneEasyPace = document.getElementById('zoneEasyPace');
+  const zoneTempoPace = document.getElementById('zoneTempoPace');
+  const zoneIntervalPace = document.getElementById('zoneIntervalPace');
+  const trainingGoalBadge = document.getElementById('trainingGoalBadge');
+  const weekVolumeBadge = document.getElementById('weekVolumeBadge');
+  const planWeekHeadline = document.getElementById('planWeekHeadline');
+  const planWeekFocus = document.getElementById('planWeekFocus');
+  const planWeekCompletionStatus = document.getElementById('planWeekCompletionStatus');
+
+  const p = activeTrainingPlan;
+  const currentWeek = p.weeks[currentPlanWeek] || p.weeks[0];
+
+  if (basePaceDisplay) basePaceDisplay.textContent = formatPace(p.basePaceSeconds);
+  if (predictedFinish) predictedFinish.textContent = p.predictedTime;
+  if (zoneEasyPace) zoneEasyPace.textContent = p.paces.easyPaceFormatted;
+  if (zoneTempoPace) zoneTempoPace.textContent = p.paces.tempoPaceFormatted;
+  if (zoneIntervalPace) zoneIntervalPace.textContent = p.paces.intervalPaceFormatted;
+  if (trainingGoalBadge) trainingGoalBadge.textContent = p.goalName;
+
+  if (weekVolumeBadge) weekVolumeBadge.textContent = `Week ${currentPlanWeek + 1}: ${currentWeek.targetMiles} mi`;
+  if (planWeekHeadline) planWeekHeadline.textContent = currentWeek.title;
+  if (planWeekFocus) planWeekFocus.textContent = currentWeek.focus;
+
+  const completedCount = currentWeek.days.filter(d => d.completed).length;
+  if (planWeekCompletionStatus) {
+    planWeekCompletionStatus.textContent = `${completedCount} / ${currentWeek.days.length} Done`;
+  }
+
+  renderPlanWorkouts(currentWeek);
+}
+
+function renderPlanWorkouts(weekData) {
+  const container = document.getElementById('planWorkoutsList');
+  if (!container) return;
+
+  container.innerHTML = '';
+  weekData.days.forEach((d, idx) => {
+    const card = document.createElement('div');
+    card.className = `p-3 rounded-2xl border transition-all ${
+      d.completed
+        ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30'
+        : 'bg-stone-50 dark:bg-stone-800/80 border-stone-200 dark:border-stone-700/80 hover:border-terracotta/40'
+    }`;
+
+    let typeBadgeColor = 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300';
+    if (d.type === 'interval' || d.type === 'race') typeBadgeColor = 'bg-rose-500/10 text-rose-500 border border-rose-500/20';
+    else if (d.type === 'tempo') typeBadgeColor = 'bg-amber-500/10 text-amber-500 border border-amber-500/20';
+    else if (d.type === 'long') typeBadgeColor = 'bg-terracotta/10 text-terracotta border border-terracotta/20';
+    else if (d.type === 'easy') typeBadgeColor = 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
+
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-start gap-2.5 min-w-0 flex-1">
+          <button class="btn-toggle-workout-done w-6 h-6 rounded-lg border mt-0.5 flex items-center justify-center transition flex-shrink-0 cursor-pointer ${
+            d.completed
+              ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+              : 'border-stone-300 dark:border-stone-600 hover:border-emerald-500 bg-white dark:bg-stone-700 text-transparent'
+          }" title="${d.completed ? 'Mark Incomplete' : 'Mark Completed'}" data-day-index="${idx}">
+            <i class="fa-solid fa-check text-xs"></i>
+          </button>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-black text-stone-900 dark:text-white">${d.day}: ${d.title}</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded font-extrabold ${typeBadgeColor}">${d.zone}</span>
+            </div>
+            <p class="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">${d.desc}</p>
+            <div class="flex items-center gap-2 mt-1.5 text-[10px]">
+              <span class="font-mono font-bold text-terracotta">${d.dist} mi</span>
+              <span>·</span>
+              <span class="font-mono text-stone-500">Target: <strong class="text-stone-800 dark:text-stone-200">${d.pace}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-plan-map-route py-1.5 px-2.5 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-[11px] font-bold flex items-center gap-1 shadow-sm active:scale-95 transition flex-shrink-0 cursor-pointer" data-dist="${d.dist}" data-title="${d.title}">
+          <i class="fa-solid fa-map-location-dot text-[10px]"></i>
+          <span>Map Route</span>
+        </button>
+      </div>
+    `;
+
+    // Checkbox toggle listener
+    const doneBtn = card.querySelector('.btn-toggle-workout-done');
+    if (doneBtn) {
+      doneBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        d.completed = !d.completed;
+        saveActivePlan(activeTrainingPlan);
+        updateTrainingPlanUI();
+        playTurnChime();
+        if (d.completed) {
+          speakInstruction(`Workout completed! ${d.dist} miles marked off.`);
+        }
+      });
+    }
+
+    // Map Route button listener: loads directly into route map
+    const mapBtn = card.querySelector('.btn-plan-map-route');
+    if (mapBtn) {
+      mapBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dist = parseFloat(mapBtn.getAttribute('data-dist')) || 3.1;
+        const title = mapBtn.getAttribute('data-title') || 'Training Run';
+
+        // 1. Switch bottom nav to Route Map tab
+        const mapNavBtn = document.querySelector('.bottom-nav-btn[data-target="tabPlanner"]');
+        if (mapNavBtn) mapNavBtn.click();
+
+        // 2. Set distance and regenerate safe loop options
+        currentSelectedDistance = dist;
+        const origin = activeRoute?.path?.[0] || activeRoute?.center || { lat: 41.3857, lng: -81.7058 };
+        generateMultipleLoopChoices(origin.lat, origin.lng, title, dist, 0);
+
+        // 3. Update slider and target label
+        const slider = document.getElementById('distanceSlider');
+        const sliderDisplay = document.getElementById('targetDistanceDisplay');
+        if (slider) slider.value = dist;
+        if (sliderDisplay) sliderDisplay.textContent = `${dist.toFixed(1)} miles`;
+
+        playTurnChime();
+        speakInstruction(`Loaded ${dist} miles training route for ${title}. Option 1 selected.`);
+      });
+    }
+
+    container.appendChild(card);
+  });
 }
 
 if (document.readyState === 'loading') {
@@ -1486,16 +1691,24 @@ function stopNavigation() {
     runnerMarker = null;
   }
 
-  // Auto-save completed workout to Firestore if run was active
-  if (navSecondsElapsed >= 6 && currentUser) {
-    addRunActivity({
+  // Auto-save completed workout to Firestore and evaluate badges
+  if (navSecondsElapsed >= 6) {
+    const workoutData = {
       routeTitle: activeRoute.title,
       distance: Number(activeRoute.distance || currentSelectedDistance || 3.1),
       durationSeconds: navSecondsElapsed,
       avgPace: currentTargetPace,
       avgHeartRate: 148,
-      calories: Math.round((navSecondsElapsed / 60) * 11.5) + 14
-    }).catch(err => console.error("Could not auto-save run activity:", err));
+      calories: Math.round((navSecondsElapsed / 60) * 11.5) + 14,
+      completedAt: new Date().toISOString()
+    };
+    evaluateBadgesFromWorkouts([workoutData], { weather: currentWeatherData }, (badge) => {
+      playTurnChime();
+      speakInstruction(`Achievement unlocked: ${badge.title} badge! ${badge.subtitle}`);
+    });
+    if (currentUser) {
+      addRunActivity(workoutData).catch(err => console.error("Could not auto-save run activity:", err));
+    }
   }
 }
 
@@ -2232,6 +2445,91 @@ function setupUIHandlers() {
     });
   }
 
+  // ----------------------------------------------------
+  // Training Plan Generator Handlers (Health Tab)
+  // ----------------------------------------------------
+  const planGoalBtns = document.querySelectorAll('.btn-plan-goal');
+  planGoalBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      planGoalBtns.forEach(b => {
+        b.classList.remove('bg-terracotta', 'text-white', 'shadow-sm', 'active');
+        b.classList.add('bg-stone-100', 'dark:bg-stone-700/60', 'text-stone-700', 'dark:text-stone-300');
+      });
+      btn.classList.add('bg-terracotta', 'text-white', 'shadow-sm', 'active');
+      btn.classList.remove('bg-stone-100', 'dark:bg-stone-700/60', 'text-stone-700', 'dark:text-stone-300');
+
+      currentGoalId = btn.getAttribute('data-goal') || '5k';
+      const basePaceSec = getHistoricalPaceSeconds();
+      activeTrainingPlan = generate4WeekPlan(currentGoalId, basePaceSec);
+      saveActivePlan(activeTrainingPlan);
+      currentPlanWeek = 0;
+      syncPlanWeekTabs();
+      updateTrainingPlanUI();
+      playTurnChime();
+      speakInstruction(`Generated custom 4-week training block for ${activeTrainingPlan.goalName}.`);
+    });
+  });
+
+  const planWeekBtns = document.querySelectorAll('.btn-plan-week');
+  function syncPlanWeekTabs() {
+    planWeekBtns.forEach(b => {
+      const w = parseInt(b.getAttribute('data-week'), 10);
+      if (w === currentPlanWeek) {
+        b.classList.add('bg-white', 'dark:bg-stone-700', 'text-stone-900', 'dark:text-white', 'shadow-sm', 'active');
+        b.classList.remove('text-stone-600', 'dark:text-stone-400');
+      } else {
+        b.classList.remove('bg-white', 'dark:bg-stone-700', 'text-stone-900', 'dark:text-white', 'shadow-sm', 'active');
+        b.classList.add('text-stone-600', 'dark:text-stone-400');
+      }
+    });
+  }
+
+  planWeekBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPlanWeek = parseInt(btn.getAttribute('data-week'), 10) || 0;
+      syncPlanWeekTabs();
+      updateTrainingPlanUI();
+    });
+  });
+
+  const btnRegeneratePlan = document.getElementById('btnRegeneratePlan');
+  if (btnRegeneratePlan) {
+    btnRegeneratePlan.addEventListener('click', () => {
+      const basePaceSec = getHistoricalPaceSeconds();
+      activeTrainingPlan = generate4WeekPlan(currentGoalId, basePaceSec);
+      saveActivePlan(activeTrainingPlan);
+      updateTrainingPlanUI();
+      playTurnChime();
+      speakInstruction("Recalibrated 4-week training block with your latest pace data.");
+    });
+  }
+
+  const btnExportTrainingPlan = document.getElementById('btnExportTrainingPlan');
+  if (btnExportTrainingPlan) {
+    btnExportTrainingPlan.addEventListener('click', () => {
+      if (!activeTrainingPlan) return;
+      let scheduleText = `PACE PLOT - ${activeTrainingPlan.goalName.toUpperCase()} 4-WEEK TRAINING PLAN\n`;
+      scheduleText += `Base Pace: ${formatPace(activeTrainingPlan.basePaceSeconds)} | Target Finish: ${activeTrainingPlan.predictedTime}\n\n`;
+      activeTrainingPlan.weeks.forEach(w => {
+        scheduleText += `=== ${w.title} (${w.targetMiles} mi) ===\n`;
+        w.days.forEach(d => {
+          scheduleText += `• ${d.day}: ${d.title} - ${d.dist} mi @ ${d.pace} (${d.zone})\n  Note: ${d.desc}\n`;
+        });
+        scheduleText += '\n';
+      });
+      const blob = new Blob([scheduleText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PacePlot_${currentGoalId}_4Week_Training_Plan.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      playTurnChime();
+      speakInstruction("Training block exported successfully.");
+    });
+  }
+
+
   // Location Search & Autocomplete
   setupLocationSearch();
 
@@ -2541,21 +2839,32 @@ function setupFirebaseAuth() {
         }
       }
 
+      const workoutData = {
+        routeTitle: activeRoute.title,
+        distance: Number(activeRoute.distance || 3.1),
+        durationSeconds: 1572,
+        avgPace: "8'27\"",
+        avgHeartRate: 148,
+        calories: 342,
+        completedAt: new Date().toISOString()
+      };
+
+      evaluateBadgesFromWorkouts([workoutData], { weather: currentWeatherData }, (badge) => {
+        playTurnChime();
+        speakInstruction(`Achievement unlocked: ${badge.title} badge! ${badge.subtitle}`);
+      });
+
       if (currentUser) {
         try {
-          await addRunActivity({
-            routeTitle: activeRoute.title,
-            distance: Number(activeRoute.distance || 3.1),
-            durationSeconds: 1572,
-            avgPace: "8'27\"",
-            avgHeartRate: 148,
-            calories: 342
-          });
+          await addRunActivity(workoutData);
           playTurnChime();
           speakInstruction("Workout logged to cloud history.");
         } catch (err) {
           console.error("Error logging run:", err);
         }
+      } else {
+        playTurnChime();
+        speakInstruction("Workout logged locally. Milestones updated.");
       }
     });
   }
@@ -2793,6 +3102,14 @@ function renderCloudContacts(contactsList) {
 function renderCloudWorkouts(workoutsList) {
   const container = document.getElementById('workoutsHistoryList');
   if (!container) return;
+
+  // Evaluate and unlock badges based on latest synced workouts
+  if (workoutsList && workoutsList.length > 0) {
+    evaluateBadgesFromWorkouts(workoutsList, { weather: currentWeatherData }, (badge) => {
+      playTurnChime();
+      speakInstruction(`Achievement unlocked: ${badge.title} badge! ${badge.subtitle}`);
+    });
+  }
 
   if (!workoutsList || workoutsList.length === 0) {
     container.innerHTML = `
