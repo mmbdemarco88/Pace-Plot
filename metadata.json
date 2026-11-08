@@ -1,0 +1,8 @@
+{
+  "name": "Pace Plot",
+  "description": "Safe run and walk navigation app prototype featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

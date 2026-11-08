@@ -3,33 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pace Plot - Android Prototype by Stride Circuit LLC</title>
+  <title>Pace Plot - Safe Run & Walk Navigation by Stride Circuit LLC</title>
+  <meta name="description" content="Safe run and walk navigation app prototype featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.">
+  <meta property="og:title" content="Pace Plot - Safe Run & Walk Navigation by Stride Circuit LLC">
+  <meta property="og:description" content="Safe run and walk navigation app prototype featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.">
   
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  
-  <!-- Leaflet CSS & JS for OpenStreetMap -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
           colors: {
             terracotta: {
-              DEFAULT: '#C84B1A',
-              hover: '#B23F14',
-              dark: '#9E3812',
-              light: '#F8ECE7',
+              DEFAULT: '#E15A2B',
+              hover: '#CD4C20',
+              dark: '#B33C14',
+              light: '#FAECE6',
+            },
+            obsidian: {
+              900: '#121418',
+              950: '#0B0C0E',
             },
             cream: {
-              DEFAULT: '#FBF8F5',
-              darker: '#F3EDE7',
+              DEFAULT: '#FBF9F7',
+              darker: '#F3EFEA',
             }
           }
         }
@@ -45,16 +57,33 @@
     .dark ::-webkit-scrollbar-thumb { background: #475569; }
 
     /* Map container sizing */
-    #map {
+    #mapWrapper {
+      position: relative;
+      flex: 1 1 0%;
+      min-height: 320px;
       width: 100%;
       height: 100%;
+    }
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
       z-index: 10;
+    }
+    .gm-style, .leaflet-container {
+      width: 100% !important;
+      height: 100% !important;
     }
 
     /* Pulse animation for active runner dot */
     @keyframes pulse-ring {
-      0% { transform: scale(0.7); opacity: 0.9; }
-      100% { transform: scale(2.2); opacity: 0; }
+      0% { transform: scale(0.8); opacity: 0.95; }
+      100% { transform: scale(2.4); opacity: 0; }
     }
     .runner-pulse {
       position: relative;
@@ -62,10 +91,10 @@
     .runner-pulse::after {
       content: '';
       position: absolute;
-      top: -6px; left: -6px; right: -6px; bottom: -6px;
+      top: -8px; left: -8px; right: -8px; bottom: -8px;
       border-radius: 50%;
       background-color: #C84B1A;
-      animation: pulse-ring 1.6s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+      animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
     }
   </style>
 </head>
@@ -81,7 +110,7 @@
         <span class="font-bold tracking-tight text-white">Pace Plot</span>
         <span class="text-xs text-stone-400 ml-1">by Stride Circuit LLC</span>
       </div>
-      <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700">Android Prototype</span>
+      <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700">Google Maps Platform</span>
     </div>
 
     <!-- Quick Presets -->
@@ -97,6 +126,12 @@
 
     <!-- Viewport & Mode Toggles -->
     <div class="flex items-center gap-2">
+      <!-- Google Auth Button (Firebase) -->
+      <button id="btnGoogleAuth" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs text-stone-200 flex items-center gap-1.5 transition font-medium border border-stone-600 shadow-sm" title="Google Account">
+        <i class="fa-brands fa-google text-terracotta"></i>
+        <span id="googleAuthLabel">Sign In</span>
+      </button>
+
       <button id="toggleDeviceFrame" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs flex items-center gap-1.5 transition">
         <i class="fa-solid fa-mobile-screen"></i>
         <span id="frameModeText">Fullscreen</span>
@@ -111,6 +146,15 @@
   <!-- Prototype Container (Switches between Mobile Frame and Full-Width) -->
   <main id="appContainer" class="w-full max-w-[420px] h-[840px] max-h-[92vh] bg-cream dark:bg-stone-900 rounded-[36px] shadow-2xl border-[8px] border-stone-800 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
     
+    <!-- Google Maps Platform Quota Banner (Demo Key Protection) -->
+    <div id="gmpQuotaBanner" class="hidden bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2 text-[11px] text-center sticky top-0 z-50 shadow-sm">
+      <span>
+        Google Maps Platform quota reached. If you are the app owner, visit
+        <a href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-amber-950 dark:text-amber-100 hover:text-amber-800">maps developer site</a>
+        for instructions to update your account.
+      </span>
+    </div>
+
     <!-- Android Status Bar -->
     <div class="w-full h-8 px-6 pt-1 flex items-center justify-between text-xs font-semibold text-stone-600 dark:text-stone-400 select-none bg-cream dark:bg-stone-900 z-30">
       <span id="clockDisplay">09:41</span>
@@ -134,6 +178,10 @@
       </div>
 
       <div class="flex items-center gap-1.5">
+        <button id="btnMobileAuth" class="px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center gap-1 transition text-xs font-medium border border-stone-200 dark:border-stone-700" title="Account">
+          <i class="fa-brands fa-google text-terracotta text-[10px]"></i>
+          <span id="mobileAuthLabel" class="text-[10px]">Sign In</span>
+        </button>
         <button id="audioVoiceToggle" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center justify-center transition text-xs" title="Audio Voice Guidance">
           <i id="audioIcon" class="fa-solid fa-volume-high"></i>
         </button>
@@ -152,15 +200,16 @@
       <!-- ========================================== -->
       <section id="tabPlanner" class="tab-content absolute inset-0 flex flex-col z-20">
         
-        <!-- Interactive Map Container -->
-        <div class="flex-1 relative w-full overflow-hidden bg-stone-200 dark:bg-stone-800">
+        <!-- Interactive Map Container (Expansive, top portion) -->
+        <div id="mapWrapper" class="flex-1 relative w-full h-full min-h-[300px] overflow-hidden bg-stone-200 dark:bg-stone-800">
           <div id="map"></div>
-          <!-- Live OSM/Photon Geocoding Address Search Bar -->
-          <div class="absolute top-3 left-3 right-3 z-20">
+          
+          <!-- Live Location & Place Search Bar -->
+          <div class="absolute top-2.5 left-3 right-3 z-20">
             <div class="relative shadow-lg">
               <div class="flex items-center bg-white/95 dark:bg-stone-800/95 backdrop-blur-md rounded-2xl border border-stone-200 dark:border-stone-700 px-3 py-2">
                 <i class="fa-solid fa-magnifying-glass text-terracotta text-sm mr-2.5"></i>
-                <input id="inputLocationSearch" type="text" placeholder="Search any address, park, or city..." class="bg-transparent flex-1 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none">
+                <input id="inputLocationSearch" type="text" placeholder="Search address, park, or city..." class="bg-transparent flex-1 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none">
                 <button id="btnClearSearch" class="hidden text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs px-1 mr-1">
                   <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -174,98 +223,293 @@
             </div>
           </div>
 
+          <!-- Tap to Pin Map Hint -->
+          <div id="mapTapHint" class="absolute bottom-3 left-3 bg-stone-900/85 backdrop-blur-md text-white px-3 py-1.5 rounded-xl border border-stone-700/80 text-[11px] shadow-lg flex items-center gap-1.5 pointer-events-none z-20">
+            <i class="fa-solid fa-hand-pointer text-terracotta text-xs"></i>
+            <span>Long-press map to drop Start line or Waypoint pin</span>
+          </div>
 
-          <!-- Active Navigation Floating Card (when active) -->
-          <div id="navInstructionCard" class="hidden absolute top-14 left-3 right-3 bg-stone-900/95 text-white p-3 rounded-2xl shadow-xl backdrop-blur-md border border-stone-700 z-30 transition-all transform duration-300">
+          <!-- Dropped Pin Action Prompt (Shown on Long-Press) -->
+          <div id="droppedPinPrompt" class="hidden absolute bottom-14 left-3 right-3 bg-stone-950/95 text-white p-3.5 rounded-3xl shadow-2xl backdrop-blur-xl border border-terracotta/50 z-30 transition-all transform duration-200">
+            <div class="flex items-center justify-between pb-2 border-b border-stone-800">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-terracotta/20 text-terracotta flex items-center justify-center text-xs font-bold animate-bounce">
+                  <i class="fa-solid fa-location-dot"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-black text-white flex items-center gap-1.5">
+                    <span>Pin Dropped</span>
+                    <span id="droppedPinCoordsText" class="font-mono text-[10px] text-stone-400">41.385, -81.705</span>
+                  </div>
+                  <p class="text-[10px] text-stone-400">Choose action to re-trigger safe loop recalculation:</p>
+                </div>
+              </div>
+              <button id="btnDismissDroppedPin" class="w-6 h-6 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-2.5">
+              <button id="btnSetPinAsStart" class="py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition">
+                <i class="fa-solid fa-flag-checkered text-[11px]"></i>
+                <span>Set as Start Line</span>
+              </button>
+
+              <button id="btnSetPinAsWaypoint" class="py-2 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition">
+                <i class="fa-solid fa-diamond-turn-right text-sky-400 text-[11px]"></i>
+                <span>Add as Waypoint</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- OpenWeather Current Conditions Floating Badge -->
+          <div id="mapWeatherBadge" class="absolute top-14 left-3 z-20 flex items-center gap-2 bg-stone-900/90 text-white backdrop-blur-md px-3 py-1.5 rounded-2xl border border-stone-700/80 shadow-lg text-xs transition-all hover:bg-stone-900 cursor-pointer" title="Live Weather Conditions (Click to announce runner weather)">
+            <div class="flex items-center gap-1.5">
+              <i id="weatherConditionIcon" class="fa-solid fa-cloud-sun text-amber-400 text-sm"></i>
+              <span id="weatherTempDisplay" class="font-black font-mono text-white text-xs">64°F</span>
+            </div>
+            <span class="text-stone-600 dark:text-stone-500 text-[10px]">·</span>
+            <div id="weatherRainContainer" class="flex items-center gap-1 text-[11px] text-sky-400 font-bold">
+              <i class="fa-solid fa-droplet text-[9px]"></i>
+              <span id="weatherRainProb">8% rain</span>
+            </div>
+            <span id="weatherConditionSummary" class="text-[10px] text-stone-400 font-medium hidden md:inline truncate max-w-[130px]">· Dry</span>
+          </div>
+
+          <!-- Active Navigation Floating Card (Athletic HUD) -->
+          <div id="navInstructionCard" class="hidden absolute top-14 left-3 right-3 bg-stone-950/95 text-white p-3.5 rounded-3xl shadow-2xl backdrop-blur-xl border border-stone-800 z-30 transition-all transform duration-300">
+            <!-- Turn instruction header -->
             <div class="flex items-start gap-3">
-              <div class="w-11 h-11 rounded-xl bg-terracotta flex items-center justify-center text-white text-xl flex-shrink-0 shadow-md">
+              <div class="w-11 h-11 rounded-2xl bg-terracotta flex items-center justify-center text-white text-xl flex-shrink-0 shadow-md">
                 <i id="navTurnIcon" class="fa-solid fa-arrow-turn-up-right"></i>
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
-                  <span id="navDistanceToTurn" class="text-xs font-bold text-amber-400 uppercase tracking-wider">In 120 ft</span>
-                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-medium">Safe Path</span>
+                  <span id="navDistanceToTurn" class="text-xs font-black font-mono text-amber-400 uppercase tracking-wider">In 120 ft</span>
+                  <div class="flex items-center gap-1.5">
+                    <span id="hudVoiceSpeakingBadge" class="hidden text-[10px] text-terracotta font-bold flex items-center gap-1 bg-terracotta/15 border border-terracotta/30 px-2 py-0.5 rounded-lg animate-pulse">
+                      <i class="fa-solid fa-volume-high text-[9px]"></i>
+                      <span>Speaking</span>
+                    </span>
+                    <span id="hudWeatherBadge" class="text-[10px] text-sky-300 font-bold flex items-center gap-1 bg-stone-900/90 px-2 py-0.5 rounded-lg border border-stone-800">
+                      <i id="hudWeatherIcon" class="fa-solid fa-cloud-sun text-amber-400 text-[9px]"></i>
+                      <span id="hudWeatherText">64°F · 8% rain</span>
+                    </span>
+                    <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <i class="fa-solid fa-shield-halved text-[9px]"></i> Safe Path
+                    </span>
+                  </div>
                 </div>
-                <h3 id="navInstructionText" class="text-sm font-bold text-white truncate mt-0.5">Turn right onto West Creek Trail</h3>
-                <p id="navSubText" class="text-[11px] text-stone-300 mt-0.5 truncate">Well-lit pedestrian greenway</p>
+                <h3 id="navInstructionText" class="text-sm font-extrabold text-white truncate mt-0.5 cursor-pointer hover:text-amber-300 transition" title="Click to repeat audio direction">Turn right onto West Creek Trail</h3>
+                <p id="navSubText" class="text-[11px] text-stone-400 mt-0.5 truncate">Well-lit pedestrian greenway · No crossings</p>
               </div>
             </div>
 
             <!-- Live telemetry bar -->
-            <div class="grid grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-stone-800 text-center">
+            <div class="grid grid-cols-4 gap-2 mt-3 pt-2.5 border-t border-stone-800/80 text-center">
               <div>
-                <p class="text-[10px] text-stone-400 uppercase">Pace</p>
-                <p id="hudPace" class="text-xs font-bold text-white">8'42"</p>
+                <p class="text-[9px] text-stone-400 uppercase font-semibold">Pace</p>
+                <p id="hudPace" class="text-sm font-extrabold font-mono text-white">8'42"</p>
               </div>
               <div>
-                <p class="text-[10px] text-stone-400 uppercase">Distance</p>
-                <p id="hudDistance" class="text-xs font-bold text-amber-400">1.2 mi</p>
+                <p class="text-[9px] text-stone-400 uppercase font-semibold">Distance</p>
+                <p id="hudDistance" class="text-sm font-extrabold font-mono text-amber-400">1.20 mi</p>
               </div>
               <div>
-                <p class="text-[10px] text-stone-400 uppercase">Time</p>
-                <p id="hudTimer" class="text-xs font-bold text-white">10:15</p>
+                <p class="text-[9px] text-stone-400 uppercase font-semibold">Time</p>
+                <p id="hudTimer" class="text-sm font-extrabold font-mono text-white">10:15</p>
               </div>
               <div>
-                <p class="text-[10px] text-stone-400 uppercase">Heart Rate</p>
-                <p id="hudHR" class="text-xs font-bold text-rose-400">146 bpm</p>
+                <p class="text-[9px] text-stone-400 uppercase font-semibold">Heart Rate</p>
+                <p id="hudHR" class="text-sm font-extrabold font-mono text-rose-400">146 bpm</p>
               </div>
+            </div>
+
+            <!-- Pace Target & Zone Feedback -->
+            <div class="mt-2.5 px-2.5 py-1.5 rounded-xl bg-stone-900/80 border border-stone-800 flex items-center justify-between text-[11px]">
+              <span class="text-stone-400 flex items-center gap-1">
+                <i class="fa-solid fa-bullseye text-terracotta text-xs"></i>
+                <span>Target: <strong id="hudTargetPaceLabel" class="text-white">8'30"/mi</strong></span>
+              </span>
+              <span id="hudPaceStatus" class="font-bold text-emerald-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>On Pace</span>
+              </span>
+            </div>
+
+            <!-- In-Run Quick Controls -->
+            <div class="grid grid-cols-4 gap-1.5 mt-2.5 pt-2 border-t border-stone-800/60">
+              <button id="btnHudPauseResume" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold flex items-center justify-center gap-1 transition">
+                <i id="hudPauseIcon" class="fa-solid fa-pause text-amber-400 text-[11px]"></i>
+                <span id="hudPauseText">Pause</span>
+              </button>
+              <button id="btnHudRepeatVoice" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-sky-300 text-xs font-bold flex items-center justify-center gap-1 transition" title="Repeat Audio Turn Direction">
+                <i class="fa-solid fa-volume-high text-[11px]"></i>
+                <span>Repeat</span>
+              </button>
+              <button id="btnHudSos" class="py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold flex items-center justify-center gap-1 transition">
+                <i class="fa-solid fa-triangle-exclamation text-rose-400 text-[11px]"></i>
+                <span>SOS</span>
+              </button>
+              <button id="btnHudStop" class="py-1.5 px-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-1 transition">
+                <i class="fa-solid fa-circle-stop text-[11px]"></i>
+                <span>End</span>
+              </button>
             </div>
           </div>
 
-          <!-- Map Floating Quick Actions -->
-          <div class="absolute right-3 bottom-4 flex flex-col gap-2 z-20">
-            <button id="btnRecenter" class="w-10 h-10 rounded-full bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 shadow-md flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Recenter Location">
-              <i class="fa-solid fa-location-crosshairs text-sm"></i>
+          <!-- Map Floating Quick Actions (Right vertical stack) -->
+          <div class="absolute right-3 bottom-3 flex flex-col gap-2 z-20">
+            <button id="btnToggleSatellite" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Satellite / Terrain">
+              <i class="fa-solid fa-layer-group text-xs"></i>
             </button>
-            <button id="btnToggleSafetyHeatmap" class="w-10 h-10 rounded-full bg-white dark:bg-stone-800 text-terracotta shadow-md flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Safety Overlay">
-              <i class="fa-solid fa-shield-halved text-sm"></i>
+            <button id="btnToggleSafetyHeatmap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-terracotta shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Safety Overlay">
+              <i class="fa-solid fa-shield-halved text-xs"></i>
+            </button>
+            <button id="btnRecenter" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Recenter Location">
+              <i class="fa-solid fa-location-crosshairs text-xs"></i>
+            </button>
+            <button id="btnMaximizeMap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition" title="Toggle Bottom Drawer">
+              <i class="fa-solid fa-up-down text-xs"></i>
             </button>
           </div>
         </div>
 
-        <!-- Collapsible Bottom Planning Sheet -->
-        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl p-4 shadow-2xl z-30 transition-all duration-300">
+        <!-- Collapsible Bottom Planning Sheet (Sleek, flexible, easy to collapse) -->
+        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl p-4 shadow-2xl z-30 transition-all duration-300 flex-shrink-0">
           
-          <!-- Sheet drag handle -->
-          <div class="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto mb-3"></div>
+          <!-- Clickable Sheet Drag Handle / Toggle Bar -->
+          <div id="sheetDragHandle" class="w-full flex items-center justify-center py-1 cursor-pointer group">
+            <div class="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 group-hover:bg-terracotta rounded-full transition"></div>
+          </div>
 
-          <!-- Safety & Route Overview Header -->
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-bold uppercase tracking-wider text-terracotta">AI Safe Loop</span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-terracotta/10 text-terracotta border border-terracotta/20">9.6 Safety Score</span>
+          <!-- Compact / Minimized Sheet Bar (Shown when collapsed) -->
+          <div id="sheetCompactBar" class="hidden flex items-center justify-between gap-2 pt-1 pb-1">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 text-xs text-stone-500">
+                <span class="font-bold text-terracotta">9.8 Safety</span>
+                <span>·</span>
+                <span id="compactRouteMileage" class="font-bold text-stone-900 dark:text-white">3.10 mi</span>
+                <span>·</span>
+                <span>+42 ft</span>
               </div>
-              <h2 id="routeTitle" class="text-base font-extrabold text-stone-900 dark:text-white mt-0.5">West Creek Greenway Loop</h2>
+              <h3 id="compactRouteTitle" class="text-xs font-bold text-stone-800 dark:text-stone-200 truncate mt-0.5">West Creek Greenway Safe Loop</h3>
             </div>
-            <div class="text-right">
-              <div id="routeMileageBadge" class="text-xl font-black text-stone-900 dark:text-white">3.10 <span class="text-xs font-semibold text-stone-500">mi</span></div>
-              <p class="text-[10px] text-stone-500 dark:text-stone-400">~26 min run (5.0 km)</p>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button id="compactBtnStartNav" class="px-3 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center gap-1 shadow-sm transition">
+                <i id="compactBtnNavIcon" class="fa-solid fa-circle-play"></i>
+                <span>Nav</span>
+              </button>
+              <button id="btnExpandFromCompact" class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-600 dark:text-stone-300 flex items-center justify-center text-xs transition" title="Show Route Details">
+                <i class="fa-solid fa-sliders"></i>
+              </button>
             </div>
           </div>
 
-          <!-- Controls: Target Distance & Safety Profile -->
-          <div class="space-y-3">
-            <!-- Distance Slider -->
+          <!-- Full Expanded Planning Controls -->
+          <div id="sheetFullContent" class="space-y-3.5 pt-1">
+            <!-- Safety & Route Overview Header -->
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="flex items-center gap-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  <span class="text-terracotta uppercase tracking-wider font-extrabold text-[11px]">Safe AI Loop</span>
+                  <span>·</span>
+                  <span class="text-emerald-600 dark:text-emerald-400">9.8 Safety</span>
+                  <span>·</span>
+                  <span id="routeElevationKicker">+42 ft</span>
+                </div>
+                <h2 id="routeTitle" class="text-base font-extrabold text-stone-900 dark:text-white mt-0.5 truncate max-w-[240px]">West Creek Greenway Safe Loop</h2>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-right">
+                  <div id="routeMileageBadge" class="text-xl font-black font-mono text-stone-900 dark:text-white">3.10 <span class="text-xs font-sans font-semibold text-stone-500">mi</span></div>
+                  <p id="estDurationText" class="text-[10px] text-stone-500 dark:text-stone-400">~26 min at 8'30"</p>
+                </div>
+                <button id="btnToggleSheet" class="w-7 h-7 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition" title="Collapse Drawer">
+                  <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick 1-Tap Distance Presets (Segmented control) -->
             <div>
-              <div class="flex justify-between text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">
-                <span>Target Distance:</span>
-                <span id="targetDistanceDisplay" class="font-bold text-terracotta">3.1 miles (5K)</span>
+              <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                <span>Select Loop Distance:</span>
+                <button id="btnToggleCustomDist" class="text-[11px] text-terracotta hover:underline font-bold">Custom Slider</button>
               </div>
-              <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
-              <div class="flex justify-between text-[10px] text-stone-400 mt-0.5">
-                <span>1 mi</span>
-                <span>3.1 mi (5K)</span>
-                <span>6.2 mi (10K)</span>
-                <span>10 mi</span>
+              <div class="grid grid-cols-4 gap-1.5 bg-stone-100 dark:bg-stone-800/80 p-1 rounded-2xl text-xs font-bold text-center">
+                <button class="dist-preset-btn py-1.5 px-2 rounded-xl text-stone-600 dark:text-stone-300 transition" data-dist="1.5">
+                  1.5 mi
+                </button>
+                <button class="dist-preset-btn py-1.5 px-2 rounded-xl bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active" data-dist="3.1">
+                  5K (3.1)
+                </button>
+                <button class="dist-preset-btn py-1.5 px-2 rounded-xl text-stone-600 dark:text-stone-300 transition" data-dist="4.5">
+                  4.5 mi
+                </button>
+                <button class="dist-preset-btn py-1.5 px-2 rounded-xl text-stone-600 dark:text-stone-300 transition" data-dist="6.2">
+                  10K (6.2)
+                </button>
               </div>
+
+              <!-- Custom Distance Slider (Hidden by default, toggleable) -->
+              <div id="customSliderContainer" class="hidden mt-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                <div class="flex justify-between text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">
+                  <span>Custom Target:</span>
+                  <span id="targetDistanceDisplay" class="font-bold text-terracotta">3.1 miles</span>
+                </div>
+                <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
+              </div>
+            </div>
+
+            <!-- Target Pace Coach Segmented Selector -->
+            <div>
+              <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                <span>Target Pace:</span>
+                <span id="targetPaceDisplay" class="font-bold font-mono text-terracotta text-xs">8'30" /mi (Base)</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1.5 bg-stone-100 dark:bg-stone-800/80 p-1 rounded-2xl text-xs font-bold text-center">
+                <button class="pace-preset-btn py-1.5 px-1 rounded-xl text-stone-600 dark:text-stone-300 transition" data-pace="15:00" data-label="Walk">
+                  Walk 15'
+                </button>
+                <button class="pace-preset-btn py-1.5 px-1 rounded-xl text-stone-600 dark:text-stone-300 transition" data-pace="9:45" data-label="Easy">
+                  Easy 9'45"
+                </button>
+                <button class="pace-preset-btn py-1.5 px-1 rounded-xl bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active" data-pace="8:30" data-label="Base">
+                  Base 8'30"
+                </button>
+                <button class="pace-preset-btn py-1.5 px-1 rounded-xl text-stone-600 dark:text-stone-300 transition" data-pace="7:30" data-label="Tempo">
+                  Tempo 7'30"
+                </button>
+              </div>
+            </div>
+
+            <!-- Elevation Profile Mini-Chart -->
+            <div class="bg-stone-100 dark:bg-stone-800/50 p-2.5 rounded-2xl border border-stone-200 dark:border-stone-800">
+              <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                <span class="flex items-center gap-1 font-semibold text-stone-700 dark:text-stone-300">
+                  <i class="fa-solid fa-chart-area text-terracotta text-xs"></i> Elevation Profile
+                </span>
+                <span class="font-mono text-[10px]" id="elevProfileStats">+42 ft Gain · 780 ft Max</span>
+              </div>
+              <svg class="w-full h-11" viewBox="0 0 300 44" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#E15A2B" stop-opacity="0.45"/>
+                    <stop offset="100%" stop-color="#E15A2B" stop-opacity="0.02"/>
+                  </linearGradient>
+                </defs>
+                <path id="elevSvgFill" d="M 0 32 Q 40 18 80 24 T 160 14 T 240 28 T 300 20 L 300 44 L 0 44 Z" fill="url(#elevGrad)"/>
+                <path id="elevSvgStroke" d="M 0 32 Q 40 18 80 24 T 160 14 T 240 28 T 300 20" fill="none" stroke="#E15A2B" stroke-width="2.5" stroke-linecap="round"/>
+                <circle id="elevRunnerDot" cx="12" cy="32" r="4.5" fill="#ffffff" stroke="#E15A2B" stroke-width="2.5"/>
+              </svg>
             </div>
 
             <!-- Surface & Safety Filters -->
             <div class="grid grid-cols-3 gap-2 text-xs">
               <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-terracotta bg-terracotta text-white font-semibold text-center transition flex flex-col items-center gap-0.5" data-surface="trail">
                 <i class="fa-solid fa-tree text-xs"></i>
-                <span class="text-[11px]">Greenway/Trail</span>
+                <span class="text-[11px]">Greenway</span>
               </button>
               <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5" data-surface="road">
                 <i class="fa-solid fa-road text-xs"></i>
@@ -277,136 +521,78 @@
               </button>
             </div>
 
-            <!-- Safety Metrics Pills -->
-            <div class="flex items-center justify-between px-3 py-2 bg-stone-100 dark:bg-stone-800/60 rounded-xl text-[11px] text-stone-600 dark:text-stone-400">
-              <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                <i class="fa-solid fa-check-double text-xs"></i> 92% Sidewalks
+            <!-- Zero-Pill Safety Metrics Bar -->
+            <div class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1 pt-0.5">
+              <span id="metricSidewalk" class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                <i class="fa-solid fa-check text-xs"></i> 98% Sidewalks
               </span>
-              <span class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+              <span id="metricLit" class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
                 <i class="fa-solid fa-bolt text-xs"></i> 100% Lit Streets
               </span>
-              <span class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-medium">
+              <span id="metricGain" class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold">
                 <i class="fa-solid fa-mountain text-xs"></i> +42 ft Gain
               </span>
             </div>
 
-            <!-- Primary Action Buttons -->
-            <div class="grid grid-cols-2 gap-2 pt-1">
-              <button id="btnGenerateAiRoute" class="w-full py-2.5 px-3 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
-                <i class="fa-solid fa-wand-magic-sparkles text-terracotta"></i>
-                <span>Re-Map AI Loop</span>
-              </button>
-              
-              <button id="btnStartNavigation" class="w-full py-2.5 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-terracotta/30 transition">
-                <i id="btnNavIcon" class="fa-solid fa-circle-play text-sm"></i>
-                <span id="btnNavLabel">Start Voice Nav</span>
-              </button>
+            <!-- 3-4 AI Safe Route Choices (Multi-Option Selector) -->
+            <div class="space-y-2 pt-1 border-t border-stone-200 dark:border-stone-800">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span class="text-xs font-black uppercase tracking-wider text-stone-900 dark:text-white">AI Safe Route Options</span>
+                  <span id="routeChoicesBadge" class="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-200 dark:bg-stone-700 font-bold text-stone-700 dark:text-stone-300">4 Generated</span>
+                </div>
+                <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-xs font-extrabold flex items-center gap-1 transition active:scale-95" title="Generate fresh alternative routes">
+                  <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+                  <span>Redo Choices</span>
+                </button>
+              </div>
+
+              <!-- Route Choice Cards List (Populated and selected in real-time) -->
+              <div id="routeChoicesList" class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                <!-- Rendered dynamically by main.js -->
+              </div>
             </div>
+
+            <!-- Turn-by-Turn Audio Guidance Preview (Collapsible Accordion) -->
+            <div class="border border-stone-200 dark:border-stone-800 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 overflow-hidden">
+              <button id="btnToggleManeuversList" class="w-full py-2 px-3 flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-volume-high text-terracotta text-xs"></i>
+                  <span>Turn-by-Turn Audio Guidance</span>
+                  <span id="maneuversCountBadge" class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300">6 turns</span>
+                </span>
+                <i id="maneuversChevron" class="fa-solid fa-chevron-down text-[10px] text-stone-400 transition-transform"></i>
+              </button>
+              <div id="maneuversListContainer" class="hidden px-2.5 pb-2.5 space-y-1.5 border-t border-stone-200/60 dark:border-stone-700/60 pt-2 max-h-48 overflow-y-auto">
+                <!-- Rendered dynamically with speaker preview buttons -->
+              </div>
+            </div>
+
+            <!-- Primary Command Actions -->
+            <div class="space-y-2 pt-1">
+              <button id="btnStartNavigation" class="w-full h-12 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-[0.98] transition-all">
+                <i id="btnNavIcon" class="fa-solid fa-circle-play text-base"></i>
+                <span id="btnNavLabel">Start Safe Voice Nav</span>
+              </button>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button id="btnGenerateAiRoute" class="py-2.5 px-3 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+                  <i class="fa-solid fa-wand-magic-sparkles text-terracotta"></i>
+                  <span>Re-Map AI Loop</span>
+                </button>
+
+                <button id="btnSaveRouteToCloud" class="py-2.5 px-3 rounded-xl bg-stone-100 dark:bg-stone-800/80 hover:bg-stone-200 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition">
+                  <i class="fa-solid fa-cloud-arrow-up text-terracotta"></i>
+                  <span id="saveRouteToCloudLabel">Save to Cloud</span>
+                </button>
+              </div>
           </div>
         </div>
       </section>
 
       <!-- ========================================== -->
-      <!-- TAB 2: HEALTH & WATCH CONNECT -->
-      <!-- ========================================== -->
-      <section id="tabHealth" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
-        <div class="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-          <div>
-            <h2 class="text-lg font-black text-stone-900 dark:text-white">Health & Smartwatches</h2>
-            <p class="text-xs text-stone-500">Android Health Connect & Bluetooth Sensors</p>
-          </div>
-          <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
-            <i class="fa-solid fa-link text-[10px]"></i> Active
-          </span>
-        </div>
-
-        <!-- Health Connect Hub Card -->
-        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg">
-              <i class="fa-solid fa-heart-pulse"></i>
-            </div>
-            <div class="flex-1">
-              <h3 class="text-sm font-bold text-stone-900 dark:text-white">Android Health Connect</h3>
-              <p class="text-xs text-stone-500 dark:text-stone-400">Zero cloud fees. On-device biometric hub.</p>
-            </div>
-            <button id="btnToggleHealthConnect" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition">
-              Connected
-            </button>
-          </div>
-
-          <!-- Connected ecosystem badges -->
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 dark:border-stone-700 text-xs">
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-brands fa-google text-rose-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Google Fit</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-solid fa-mobile text-sky-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Samsung Health</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-brands fa-strava text-orange-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Strava Direct</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-solid fa-clock text-blue-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Garmin Connect</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-          </div>
-        </div>
-
-        <!-- Live Metrics Preview -->
-        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics (Sensor Telemetry)</h3>
-          
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
-              <p class="text-[10px] text-stone-500">Avg Heart Rate</p>
-              <p id="healthHeartRate" class="text-base font-extrabold text-rose-500 mt-0.5">148 <span class="text-[10px] font-normal text-stone-400">bpm</span></p>
-            </div>
-            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
-              <p class="text-[10px] text-stone-500">Cadence</p>
-              <p id="healthCadence" class="text-base font-extrabold text-terracotta mt-0.5">168 <span class="text-[10px] font-normal text-stone-400">spm</span></p>
-            </div>
-            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
-              <p class="text-[10px] text-stone-500">Calories</p>
-              <p id="healthCalories" class="text-base font-extrabold text-amber-500 mt-0.5">324 <span class="text-[10px] font-normal text-stone-400">kcal</span></p>
-            </div>
-          </div>
-        </div>
-
-        <!-- GPX Export & Share Action Card -->
-        <div class="bg-gradient-to-br from-terracotta/10 to-amber-500/10 dark:from-terracotta/20 dark:to-stone-800 p-4 rounded-2xl border border-terracotta/20 space-y-2">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-file-export text-terracotta"></i>
-            <h3 class="text-sm font-bold text-stone-900 dark:text-white">Export & Watch Sync</h3>
-          </div>
-          <p class="text-xs text-stone-600 dark:text-stone-300">
-            Export this safe route directly as a standard GPX file compatible with Apple Watch Workouts, Garmin Connect, COROS, or Suunto.
-          </p>
-          <div class="flex gap-2 pt-1">
-            <button id="btnExportGpx" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
-              <i class="fa-solid fa-download"></i>
-              <span>Download .GPX Track</span>
-            </button>
-            <button id="btnShareRoute" class="py-2 px-3 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-50 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-200 dark:border-stone-600 transition">
-              <i class="fa-solid fa-share-nodes"></i>
-            </button>
-          </div>
-          <div id="exportStatusToast" class="hidden text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold text-center mt-1">
-            <i class="fa-solid fa-check"></i> GPX generated and downloaded!
-          </div>
-        </div>
-      </section>
-
-      <!-- ========================================== -->
-            <!-- ========================================== -->
-      <!-- TAB: SAFGUARD & EMERGENCY BEACON (PREMIUM) -->
+      <!-- TAB 2: SAFGUARD & EMERGENCY BEACON (PREMIUM) -->
       <!-- ========================================== -->
       <section id="tabSafetyBeacon" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
         <div class="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
@@ -461,10 +647,52 @@
           </div>
         </div>
 
+        <!-- Live Simulated SMS Delivery Preview -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
+              <i class="fa-solid fa-mobile-screen-button text-terracotta"></i>
+              <span>Live SMS Beacon Preview</span>
+            </div>
+            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-circle-check"></i> Automated Link
+            </span>
+          </div>
+
+          <!-- Message Bubble Mockup -->
+          <div class="p-3 bg-stone-50 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs space-y-2 font-sans">
+            <div class="flex items-center justify-between text-[10px] text-stone-400">
+              <span class="font-bold text-stone-600 dark:text-stone-300">Stride SafeGuard SMS Dispatch</span>
+              <span>Live Beacon</span>
+            </div>
+            <p class="text-stone-800 dark:text-stone-200 leading-relaxed text-[11px]">
+              "🏃 Bryan started a safe run on <strong class="text-terracotta">West Creek Greenway</strong>. Track live GPS coordinates, current pace, and phone battery (86%):"
+            </p>
+            <div class="p-2 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-terracotta font-mono font-bold text-[11px] truncate">
+              https://paceplot.app/track/stride-safe-7b49
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
+              <span>Est. Return: <strong>10:08 AM</strong></span>
+              <span>Battery: <strong>86%</strong></span>
+            </div>
+          </div>
+
+          <button id="btnSendTestBeaconSms" class="w-full py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-700/60 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition">
+            <i class="fa-solid fa-paper-plane text-terracotta text-xs"></i>
+            <span>Simulate Sending Test SMS Beacon</span>
+          </button>
+          <div id="testSmsToast" class="hidden text-center text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+            <i class="fa-solid fa-check"></i> Simulated SMS dispatched to Sarah Jenkins and Mark Miller!
+          </div>
+        </div>
+
         <!-- Emergency Contacts Management -->
         <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Emergency Contacts (2/3)</h3>
+            <div class="flex items-center gap-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Emergency Contacts</h3>
+              <span id="contactsSyncStatus" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">Local Demo</span>
+            </div>
             <button id="btnAddContactModal" class="text-xs font-bold text-terracotta hover:underline flex items-center gap-1">
               <i class="fa-solid fa-plus text-[10px]"></i> Add Contact
             </button>
@@ -551,23 +779,199 @@
             I'M OKAY — CANCEL ALERT
           </button>
         </div>
+      </section>
 
-        <!-- Premium Tier Roadmap Card -->
-        <div class="p-4 rounded-2xl bg-stone-100 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 space-y-2">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-bold text-stone-900 dark:text-white">Pace Plot Premium</h3>
-            <span class="text-xs font-extrabold text-terracotta">$4.99 / mo</span>
+      <!-- ========================================== -->
+      <!-- TAB 3: HEALTH & WATCH CONNECT -->
+      <!-- ========================================== -->
+      <section id="tabHealth" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
+        <div class="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
+          <div>
+            <h2 class="text-lg font-black text-stone-900 dark:text-white">Health & Smartwatches</h2>
+            <p class="text-xs text-stone-500">Android Health Connect & Bluetooth Sensors</p>
           </div>
-          <ul class="text-[11px] text-stone-600 dark:text-stone-300 space-y-1">
-            <li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-terracotta text-xs"></i> Stride SafeGuard™ Live Beacon & Immobility Alerts</li>
-            <li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-terracotta text-xs"></i> AI Dusk-to-Dawn Streetlight Auto-Rerouter</li>
-            <li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-terracotta text-xs"></i> Offline Map Regions (Zero cellular data navigation)</li>
-            <li class="flex items-center gap-1.5"><i class="fa-solid fa-check text-terracotta text-xs"></i> Standalone Wear OS Wrist App with Audio Prompts</li>
-          </ul>
+          <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+            <i class="fa-solid fa-link text-[10px]"></i> Active
+          </span>
+        </div>
+
+        <!-- Health Connect Hub Card -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-sm font-bold text-stone-900 dark:text-white">Android Health Connect</h3>
+              <p class="text-xs text-stone-500 dark:text-stone-400">Zero cloud fees. On-device biometric hub.</p>
+            </div>
+            <button id="btnToggleHealthConnect" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition">
+              Connected
+            </button>
+          </div>
+
+          <!-- Connected ecosystem badges -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 dark:border-stone-700 text-xs">
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-brands fa-google text-rose-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Google Fit</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-solid fa-mobile text-sky-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Samsung Health</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-brands fa-strava text-orange-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Strava Direct</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-solid fa-clock text-blue-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Garmin Connect</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Metrics Preview -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics (Sensor Telemetry)</h3>
+          
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
+              <p class="text-[10px] text-stone-500">Avg Heart Rate</p>
+              <p id="healthHeartRate" class="text-base font-extrabold text-rose-500 mt-0.5">148 <span class="text-[10px] font-normal text-stone-400">bpm</span></p>
+            </div>
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
+              <p class="text-[10px] text-stone-500">Cadence</p>
+              <p id="healthCadence" class="text-base font-extrabold text-terracotta mt-0.5">168 <span class="text-[10px] font-normal text-stone-400">spm</span></p>
+            </div>
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
+              <p class="text-[10px] text-stone-500">Calories</p>
+              <p id="healthCalories" class="text-base font-extrabold text-amber-500 mt-0.5">324 <span class="text-[10px] font-normal text-stone-400">kcal</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPX Export & Share Action Card -->
+        <div class="bg-gradient-to-br from-terracotta/10 to-amber-500/10 dark:from-terracotta/20 dark:to-stone-800 p-4 rounded-2xl border border-terracotta/20 space-y-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-file-export text-terracotta"></i>
+            <h3 class="text-sm font-bold text-stone-900 dark:text-white">Export & Watch Sync</h3>
+          </div>
+          <p class="text-xs text-stone-600 dark:text-stone-300">
+            Export this safe route directly as a standard GPX file compatible with Apple Watch Workouts, Garmin Connect, COROS, or Suunto.
+          </p>
+          <div class="flex gap-2 pt-1">
+            <button id="btnExportGpx" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+              <i class="fa-solid fa-download"></i>
+              <span>Download .GPX Track</span>
+            </button>
+            <button id="btnShareRoute" class="py-2 px-3 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-50 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-200 dark:border-stone-600 transition" title="Share Link">
+              <i class="fa-solid fa-share-nodes"></i>
+            </button>
+          </div>
+          <div id="exportStatusToast" class="hidden text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold text-center mt-1">
+            <i class="fa-solid fa-check"></i> GPX generated and downloaded!
+          </div>
+        </div>
+
+        <!-- Weekly Athletic Volume & HR Zones (Strava/Nike-grade with zero paywall) -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Weekly Training Volume</h3>
+              <p class="text-sm font-extrabold text-stone-900 dark:text-white mt-0.5">25.9 miles · 6 Runs</p>
+            </div>
+            <div class="text-right">
+              <span class="text-sm font-extrabold font-mono text-terracotta">3h 42m</span>
+              <p class="text-[10px] text-stone-400">Total Active Time</p>
+            </div>
+          </div>
+
+          <!-- Weekly 7-Day Bar Chart SVG -->
+          <div class="pt-1">
+            <div class="flex items-end justify-between gap-2 h-20 px-2 border-b border-stone-100 dark:border-stone-700 pb-1">
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/40 rounded-t-md" style="height: 38px;" title="Mon: 3.1 mi"></div>
+                <span class="text-[9px] font-semibold text-stone-400">M</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/60 rounded-t-md" style="height: 54px;" title="Tue: 4.5 mi"></div>
+                <span class="text-[9px] font-semibold text-stone-400">T</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-stone-200 dark:bg-stone-700 rounded-t-md" style="height: 6px;" title="Wed: Rest Day"></div>
+                <span class="text-[9px] font-semibold text-stone-400">W</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/75 rounded-t-md" style="height: 62px;" title="Thu: 5.0 mi"></div>
+                <span class="text-[9px] font-semibold text-stone-400">T</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/40 rounded-t-md" style="height: 38px;" title="Fri: 3.1 mi"></div>
+                <span class="text-[9px] font-semibold text-stone-400">F</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta rounded-t-md" style="height: 76px;" title="Sat: 6.2 mi (10K)"></div>
+                <span class="text-[9px] font-bold text-terracotta">S</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/55 rounded-t-md" style="height: 48px;" title="Sun: 4.0 mi"></div>
+                <span class="text-[9px] font-semibold text-stone-400">S</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Heart Rate Zone Breakdown -->
+          <div class="pt-1 space-y-1.5 text-[11px]">
+            <div class="flex justify-between font-semibold">
+              <span class="text-stone-600 dark:text-stone-300">Zone 2 Aerobic Base (Target Zone)</span>
+              <span class="font-mono text-emerald-500 font-bold">68% · 2h 31m</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden flex">
+              <div class="bg-sky-400 h-full" style="width: 14%;" title="Zone 1 Recovery"></div>
+              <div class="bg-emerald-500 h-full" style="width: 68%;" title="Zone 2 Aerobic"></div>
+              <div class="bg-amber-500 h-full" style="width: 12%;" title="Zone 3 Tempo"></div>
+              <div class="bg-rose-500 h-full" style="width: 6%;" title="Zone 4 Threshold"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-stone-400">
+              <span>Z1 Warmup (14%)</span>
+              <span class="text-emerald-500 font-semibold">Z2 Base (68%)</span>
+              <span>Z3 Tempo (12%)</span>
+              <span>Z4 Peak (6%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recorded Workouts History (Firestore Sync) -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Cloud Run History</h3>
+              <span id="workoutSyncBadge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">Local Only</span>
+            </div>
+            <button id="btnDemoRecordRun" class="text-[11px] font-bold text-terracotta hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-plus text-[10px]"></i> Log Run
+            </button>
+          </div>
+
+          <div id="workoutsHistoryList" class="space-y-2">
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40 border border-stone-100 dark:border-stone-700 flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-stone-900 dark:text-white">West Creek 5K Pace Stride</h4>
+                <p class="text-[10px] text-stone-500">3.10 mi • 26:12 • 8'27"/mi • 342 kcal</p>
+              </div>
+              <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Completed</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- TAB 3: RUNRACE USA RACE DIRECTORY -->
+      <!-- ========================================== -->
+      <!-- TAB 4: RUNRACE USA RACE DIRECTORY -->
       <!-- ========================================== -->
       <section id="tabEvents" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-3 bg-cream dark:bg-stone-900 z-10">
         <div class="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
@@ -640,38 +1044,83 @@
       </section>
 
       <!-- ========================================== -->
-      <!-- TAB 4: SAVED ROUTES & LIBRARY -->
+      <!-- TAB 5: SAVED ROUTES & LIBRARY -->
       <!-- ========================================== -->
-      <section id="tabSaved" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-3 bg-cream dark:bg-stone-900 z-10">
+      <section id="tabSaved" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
         <div class="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
           <div>
             <h2 class="text-lg font-black text-stone-900 dark:text-white">Route Library</h2>
-            <p class="text-xs text-stone-500">Offline SQLite & Cloud Library</p>
+            <p class="text-xs text-stone-500">Cloud Firestore & Offline Safe Loops</p>
           </div>
-          <button id="btnNewRouteAction" class="px-2.5 py-1 rounded-xl bg-terracotta text-white text-xs font-bold flex items-center gap-1">
-            <i class="fa-solid fa-plus"></i> New
+          <button id="btnNewRouteAction" class="px-2.5 py-1 rounded-xl bg-terracotta text-white text-xs font-bold flex items-center gap-1 shadow-sm">
+            <i class="fa-solid fa-plus"></i> New Loop
           </button>
         </div>
 
-        <div class="space-y-2.5" id="savedRoutesContainer">
+        <!-- Section 1: User's Cloud Saved Routes (Firestore) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-cloud text-terracotta text-xs"></i>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">My Cloud Routes</h3>
+              <span id="cloudRoutesBadge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400">Sign in to sync</span>
+            </div>
+          </div>
+
+          <div id="cloudSavedRoutesList" class="space-y-2">
+            <!-- Dynamically populated from Firestore onSnapshot -->
+            <div id="cloudRoutesEmptyState" class="p-4 rounded-2xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-center text-xs text-stone-500 space-y-1">
+              <i class="fa-solid fa-cloud-arrow-up text-stone-400 text-base"></i>
+              <p class="font-medium">No cloud routes saved yet.</p>
+              <p class="text-[11px] text-stone-400">Use "Save Route to Cloud" on the map screen to persist custom loops.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Standard Benchmark Loops -->
+        <div class="space-y-2 pt-1 border-t border-stone-200 dark:border-stone-800">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Benchmark Safe Loops</h3>
+          <div class="space-y-2" id="savedRoutesContainer">
           <div class="p-3 bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex items-center justify-between">
             <div>
               <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">9.8 Safety Score</span>
               <h3 class="text-sm font-bold text-stone-900 dark:text-white">West Creek Paved Greenway Loop</h3>
               <p class="text-xs text-stone-500">3.10 mi • Dedicated Sidewalks • Lit</p>
             </div>
-            <button class="btn-load-saved px-3 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition">
+            <button class="btn-load-saved px-3 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition" data-preset="parma">
               Load
             </button>
           </div>
 
           <div class="p-3 bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex items-center justify-between">
             <div>
-              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">9.4 Safety Score</span>
+              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">9.6 Safety Score</span>
               <h3 class="text-sm font-bold text-stone-900 dark:text-white">Central Park Reservoir Perimeter</h3>
               <p class="text-xs text-stone-500">4.00 mi • Unpaved Footpath</p>
             </div>
-            <button class="btn-load-saved px-3 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition">
+            <button class="btn-load-saved px-3 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition" data-preset="centralpark">
+              Load
+            </button>
+          </div>
+
+          <div class="p-3 bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex items-center justify-between">
+            <div>
+              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">9.5 Safety Score</span>
+              <h3 class="text-sm font-bold text-stone-900 dark:text-white">Austin Boardwalk Sunset Stride</h3>
+              <p class="text-xs text-stone-500">5.00 mi • Boardwalk & Water Stops</p>
+            </div>
+            <button class="btn-load-saved px-3 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition" data-preset="austin">
+              Load
+            </button>
+          </div>
+
+          <div class="p-3 bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm flex items-center justify-between">
+            <div>
+              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">9.7 Safety Score</span>
+              <h3 class="text-sm font-bold text-stone-900 dark:text-white">Chicago Lakefront Trail & Museum</h3>
+              <p class="text-xs text-stone-500">3.50 mi • Lake Michigan Promenade</p>
+            </div>
+            <button class="btn-load-saved px-3 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition" data-preset="chicago">
               Load
             </button>
           </div>
@@ -730,860 +1179,7 @@
     <p class="text-[11px] text-stone-500 mt-0.5">Click <strong>"Start Voice Nav"</strong> to experience turn-by-turn spoken audio & live GPS runner simulation.</p>
   </footer>
 
-  <!-- ======================================================== -->
-  <!-- JAVASCRIPT: Map, Navigation, Speech Synthesis, State -->
-  <!-- ======================================================== -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      
-      // ----------------------------------------------------
-      // 1. Clock Update
-      // ----------------------------------------------------
-      function updateClock() {
-        var now = new Date();
-        var hours = now.getHours().toString().padStart(2, '0');
-        var minutes = now.getMinutes().toString().padStart(2, '0');
-        var clockEl = document.getElementById('clockDisplay');
-        if (clockEl) clockEl.textContent = hours + ':' + minutes;
-      }
-      updateClock();
-      setInterval(updateClock, 30000);
-
-      // ----------------------------------------------------
-      // 2. Presets & Route Definitions
-      // ----------------------------------------------------
-      var routes = {
-        parma: {
-          title: "West Creek Greenway Safe Loop",
-          center: [41.3857, -81.7058], // Parma, OH
-          zoom: 14,
-          distance: 3.10,
-          elevation: "+42 ft",
-          safetyScore: "9.8",
-          safetyTags: ["100% Pedestrian Trail", "Night Lit", "No Crossings"],
-          path: [
-            [41.3835, -81.7090],
-            [41.3860, -81.7082],
-            [41.3895, -81.7065],
-            [41.3920, -81.7020],
-            [41.3905, -81.6980],
-            [41.3870, -81.7005],
-            [41.3845, -81.7040],
-            [41.3835, -81.7090]
-          ],
-          maneuvers: [
-            { text: "Start run heading North on West Creek Greenway", dist: "Start", icon: "fa-arrow-up", note: "Paved multi-use trail" },
-            { text: "In 250 feet, bear right at the creek bridge fork", dist: "In 250 ft", icon: "fa-arrow-turn-up-right", note: "Pedestrian bridge" },
-            { text: "Continue straight along Watershed path for 0.8 miles", dist: "In 800 ft", icon: "fa-arrow-up", note: "Lit paved corridor" },
-            { text: "Turn sharp right onto Keystone Trail connector", dist: "In 150 ft", icon: "fa-arrow-right", note: "Buffered sidewalk" },
-            { text: "Turn right onto Meadow Perimeter loop", dist: "In 100 ft", icon: "fa-arrow-right", note: "Scenic parkway" },
-            { text: "Approaching finish line! Final 200 feet ahead.", dist: "In 200 ft", icon: "fa-flag-checkered", note: "Loop closing" }
-          ]
-        },
-        centralpark: {
-          title: "Central Park Reservoir & Bridle Path",
-          center: [40.785091, -73.968285], // NYC
-          zoom: 14,
-          distance: 4.00,
-          elevation: "+65 ft",
-          safetyScore: "9.6",
-          safetyTags: ["Traffic-Free", "High Foot Traffic", "Emergency Callboxes"],
-          path: [
-            [40.7812, -73.9665],
-            [40.7865, -73.9620],
-            [40.7910, -73.9590],
-            [40.7930, -73.9635],
-            [40.7895, -73.9710],
-            [40.7840, -73.9725],
-            [40.7812, -73.9665]
-          ],
-          maneuvers: [
-            { text: "Start North on Reservoir Inner Track", dist: "Start", icon: "fa-arrow-up", note: "Crushed stone surface" },
-            { text: "Continue along North Meadow connector", dist: "In 500 ft", icon: "fa-arrow-up", note: "Car-free pedestrian drive" },
-            { text: "Turn left onto West Drive pedestrian lane", dist: "In 200 ft", icon: "fa-arrow-left", note: "Dedicated running lane" },
-            { text: "Loop back East towards the south reservoir pump house", dist: "In 300 ft", icon: "fa-arrow-right", note: "Well-lit circuit" },
-            { text: "Final sprint to the start line", dist: "In 100 ft", icon: "fa-flag-checkered", note: "Finish ahead" }
-          ]
-        },
-        austin: {
-          title: "Lady Bird Lake Boardwalk Loop",
-          center: [30.2505, -97.7340], // Austin, TX
-          zoom: 14,
-          distance: 5.00,
-          elevation: "+35 ft",
-          safetyScore: "9.5",
-          safetyTags: ["Boardwalk", "Water Stations", "High Visibility"],
-          path: [
-            [30.2540, -97.7410],
-            [30.2520, -97.7310],
-            [30.2480, -97.7220],
-            [30.2450, -97.7280],
-            [30.2490, -97.7390],
-            [30.2540, -97.7410]
-          ],
-          maneuvers: [
-            { text: "Head East on Ann & Roy Butler Hike-and-Bike Trail", dist: "Start", icon: "fa-arrow-up", note: "Crushed granite trail" },
-            { text: "Step onto Lake Boardwalk bridge section", dist: "In 400 ft", icon: "fa-arrow-up", note: "Continuous handrails & lighting" },
-            { text: "Cross Congress Avenue pedestrian underpass", dist: "In 150 ft", icon: "fa-arrow-right", note: "Grade separated crossing" },
-            { text: "Complete the southern lakefront loop", dist: "In 100 ft", icon: "fa-flag-checkered", note: "Start line ahead" }
-          ]
-        },
-        chicago: {
-          title: "Lakefront Trail & Museum Campus",
-          center: [41.8660, -87.6150], // Chicago, IL
-          zoom: 14,
-          distance: 3.50,
-          elevation: "+20 ft",
-          safetyScore: "9.7",
-          safetyTags: ["Divided Pedestrian/Bike Lanes", "Lake Michigan", "Lit"],
-          path: [
-            [41.8620, -87.6140],
-            [41.8680, -87.6120],
-            [41.8740, -87.6160],
-            [41.8710, -87.6200],
-            [41.8640, -87.6180],
-            [41.8620, -87.6140]
-          ],
-          maneuvers: [
-            { text: "Head North on Chicago Lakefront Trail (Pedestrian Lane)", dist: "Start", icon: "fa-arrow-up", note: "Paved greenway" },
-            { text: "Bear right towards Adler Planetarium peninsula", dist: "In 300 ft", icon: "fa-arrow-turn-up-right", note: "Open lakefront view" },
-            { text: "Loop around waterfront promenade", dist: "In 200 ft", icon: "fa-arrow-left", note: "Pedestrian-only plaza" },
-            { text: "Arriving back at Museum Campus trailhead", dist: "In 100 ft", icon: "fa-flag-checkered", note: "Complete loop" }
-          ]
-        }
-      };
-
-      var activeKey = 'parma';
-      var activeRoute = routes[activeKey];
-      var isVoiceMuted = false;
-      var isNavigating = false;
-      var navInterval = null;
-      var navStepIndex = 0;
-
-      // ----------------------------------------------------
-      // 3. Initialize Leaflet Map
-      // ----------------------------------------------------
-      var map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false
-      }).setView(activeRoute.center, activeRoute.zoom);
-
-      // Free OpenStreetMap CartoDB Positron / OSM Tiles
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19
-      }).addTo(map);
-
-      // Custom Start/Finish & Runner Markers
-      var startIcon = L.divIcon({
-        className: 'custom-start-marker',
-        html: '<div style="background-color:#C84B1A; width:22px; height:22px; border-radius:50%; border:3px solid #ffffff; box-shadow:0 2px 6px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px;"><i class="fa-solid fa-play"></i></div>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
-      });
-
-      var runnerIcon = L.divIcon({
-        className: 'runner-pulse',
-        html: '<div style="background-color:#C84B1A; width:18px; height:18px; border-radius:50%; border:3px solid #ffffff; box-shadow:0 2px 8px rgba(200,75,26,0.8); z-index:999;"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9]
-      });
-
-      var routePolyline = null;
-      var routeGlow = null;
-      var startMarker = null;
-      var runnerMarker = null;
-
-      function renderRouteOnMap(routeData) {
-        if (routePolyline) map.removeLayer(routePolyline);
-        if (routeGlow) map.removeLayer(routeGlow);
-        if (startMarker) map.removeLayer(startMarker);
-        if (runnerMarker) map.removeLayer(runnerMarker);
-
-        // Safety glow (soft translucent terracotta buffer)
-        routeGlow = L.polyline(routeData.path, {
-          color: '#C84B1A',
-          weight: 10,
-          opacity: 0.25,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(map);
-
-        // Core route line
-        routePolyline = L.polyline(routeData.path, {
-          color: '#C84B1A',
-          weight: 4.5,
-          opacity: 0.95,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(map);
-
-        // Start point marker
-        startMarker = L.marker(routeData.path[0], { icon: startIcon }).addTo(map);
-        
-        map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
-
-        // Update UI text
-        var titleEl = document.getElementById('routeTitle');
-        var badgeEl = document.getElementById('routeMileageBadge');
-        if (titleEl) titleEl.textContent = routeData.title;
-        if (badgeEl) badgeEl.innerHTML = routeData.distance.toFixed(2) + ' <span class="text-xs font-semibold text-stone-500">mi</span>';
-      }
-
-      renderRouteOnMap(activeRoute);
-
-      // ----------------------------------------------------
-      // 4. Web Audio & Speech Synthesis Navigation Voice
-      // ----------------------------------------------------
-      var audioCtx = null;
-      function playTurnChime() {
-        try {
-          if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          }
-          if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-          }
-          var osc = audioCtx.createOscillator();
-          var gain = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-          osc.frequency.exponentialRampToValueAtTime(880.00, audioCtx.currentTime + 0.15); // A5
-          gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start();
-          osc.stop(audioCtx.currentTime + 0.35);
-        } catch (_) {}
-      }
-
-      function speakInstruction(text) {
-        if (isVoiceMuted) return;
-        playTurnChime();
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel(); // Stop prior sentence
-          var utter = new SpeechSynthesisUtterance(text);
-          utter.rate = 1.05;
-          utter.pitch = 1.0;
-          utter.lang = 'en-US';
-          window.speechSynthesis.speak(utter);
-        }
-      }
-
-      // Voice Mute Toggle
-      var audioVoiceToggleBtn = document.getElementById('audioVoiceToggle');
-      var audioIcon = document.getElementById('audioIcon');
-      if (audioVoiceToggleBtn) {
-        audioVoiceToggleBtn.addEventListener('click', function () {
-          isVoiceMuted = !isVoiceMuted;
-          if (audioIcon) {
-            if (isVoiceMuted) {
-              audioIcon.className = 'fa-solid fa-volume-xmark text-rose-500';
-            } else {
-              audioIcon.className = 'fa-solid fa-volume-high text-stone-700 dark:text-stone-300';
-              speakInstruction("Voice navigation active");
-            }
-          }
-        });
-      }
-
-      // ----------------------------------------------------
-      // 5. Start / Stop Live Navigation Simulation
-      // ----------------------------------------------------
-      var btnStartNav = document.getElementById('btnStartNavigation');
-      var btnNavIcon = document.getElementById('btnNavIcon');
-      var btnNavLabel = document.getElementById('btnNavLabel');
-      var navCard = document.getElementById('navInstructionCard');
-      var navInstructionText = document.getElementById('navInstructionText');
-      var navSubText = document.getElementById('navSubText');
-      var navDistanceToTurn = document.getElementById('navDistanceToTurn');
-      var navTurnIcon = document.getElementById('navTurnIcon');
-
-      var hudTimer = document.getElementById('hudTimer');
-      var hudDistance = document.getElementById('hudDistance');
-      var secondsElapsed = 0;
-
-      function updateNavStep(index) {
-        var maneuvers = activeRoute.maneuvers;
-        var m = maneuvers[index % maneuvers.length];
-
-        if (navInstructionText) navInstructionText.textContent = m.text;
-        if (navSubText) navSubText.textContent = m.note;
-        if (navDistanceToTurn) navDistanceToTurn.textContent = m.dist;
-        if (navTurnIcon) navTurnIcon.className = 'fa-solid ' + m.icon;
-
-        speakInstruction(m.text);
-
-        // Move the simulated runner marker along route path
-        var pathPoints = activeRoute.path;
-        var ptIndex = Math.min(index, pathPoints.length - 1);
-        var curPoint = pathPoints[ptIndex];
-
-        if (!runnerMarker) {
-          runnerMarker = L.marker(curPoint, { icon: runnerIcon }).addTo(map);
-        } else {
-          runnerMarker.setLatLng(curPoint);
-        }
-        map.panTo(curPoint, { animate: true, duration: 1.0 });
-
-        // Update HUD
-        var distDone = ((index + 1) * (activeRoute.distance / maneuvers.length)).toFixed(2);
-        if (hudDistance) hudDistance.textContent = distDone + ' mi';
-      }
-
-      function startNavigation() {
-        isNavigating = true;
-        secondsElapsed = 0;
-        navStepIndex = 0;
-
-        if (btnNavIcon) btnNavIcon.className = 'fa-solid fa-circle-stop text-sm text-rose-300';
-        if (btnNavLabel) btnNavLabel.textContent = 'End Navigation';
-        if (navCard) navCard.classList.remove('hidden');
-
-        updateNavStep(0);
-
-        navInterval = setInterval(function () {
-          secondsElapsed += 3;
-          var mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
-          var secs = (secondsElapsed % 60).toString().padStart(2, '0');
-          if (hudTimer) hudTimer.textContent = mins + ':' + secs;
-
-          // Advance maneuver every 6 seconds
-          if (secondsElapsed % 6 === 0) {
-            navStepIndex++;
-            if (navStepIndex >= activeRoute.maneuvers.length) {
-              stopNavigation();
-              speakInstruction("Congratulations! You have completed your safe Pace Plot run.");
-              return;
-            }
-            updateNavStep(navStepIndex);
-          }
-        }, 1000);
-      }
-
-      function stopNavigation() {
-        isNavigating = false;
-        clearInterval(navInterval);
-        if (btnNavIcon) btnNavIcon.className = 'fa-solid fa-circle-play text-sm';
-        if (btnNavLabel) btnNavLabel.textContent = 'Start Voice Nav';
-        if (navCard) navCard.classList.add('hidden');
-        if (runnerMarker) {
-          map.removeLayer(runnerMarker);
-          runnerMarker = null;
-        }
-      }
-
-      if (btnStartNav) {
-        btnStartNav.addEventListener('click', function () {
-          if (!isNavigating) {
-            startNavigation();
-          } else {
-            stopNavigation();
-          }
-        });
-      }
-
-      // ----------------------------------------------------
-      // 6. Distance Slider & AI Re-Routing
-      // ----------------------------------------------------
-      var distanceSlider = document.getElementById('distanceSlider');
-      var targetDistDisplay = document.getElementById('targetDistanceDisplay');
-      var btnGenerateAiRoute = document.getElementById('btnGenerateAiRoute');
-
-      if (distanceSlider && targetDistDisplay) {
-        distanceSlider.addEventListener('input', function (e) {
-          var val = parseFloat(e.target.value);
-          var label = val + ' miles';
-          if (Math.abs(val - 3.1) < 0.1) label += ' (5K)';
-          if (Math.abs(val - 6.2) < 0.1) label += ' (10K)';
-          targetDistDisplay.textContent = label;
-        });
-      }
-
-      if (btnGenerateAiRoute) {
-        btnGenerateAiRoute.addEventListener('click', function () {
-          btnGenerateAiRoute.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-terracotta"></i> <span>Evaluating OSM Safety...</span>';
-          setTimeout(function () {
-            btnGenerateAiRoute.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-terracotta"></i> <span>Re-Map AI Loop</span>';
-            speakInstruction("Safe pedestrian loop mapped. 98 percent dedicated sidewalks.");
-            renderRouteOnMap(activeRoute);
-          }, 600);
-        });
-      }
-
-      // Surface filter pills
-      var surfaceBtns = document.querySelectorAll('.surface-filter-btn');
-      surfaceBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          surfaceBtns.forEach(function (b) {
-            b.classList.remove('bg-terracotta', 'text-white', 'border-terracotta');
-            b.classList.add('bg-white', 'dark:bg-stone-800', 'text-stone-700', 'dark:text-stone-300', 'border-stone-300', 'dark:border-stone-700');
-          });
-          btn.classList.add('bg-terracotta', 'text-white', 'border-terracotta');
-          btn.classList.remove('bg-white', 'dark:bg-stone-800', 'text-stone-700', 'dark:text-stone-300');
-          renderRouteOnMap(activeRoute);
-        });
-      });
-
-      // ----------------------------------------------------
-      // 7. Preset Selector
-      // ----------------------------------------------------
-      var presetSelect = document.getElementById('locationPreset');
-      if (presetSelect) {
-        presetSelect.addEventListener('change', function (e) {
-          var key = e.target.value;
-          if (routes[key]) {
-            if (isNavigating) stopNavigation();
-            activeKey = key;
-            activeRoute = routes[key];
-            renderRouteOnMap(activeRoute);
-            map.invalidateSize();
-          }
-        });
-      }
-
-      var recenterBtn = document.getElementById('btnRecenter');
-      if (recenterBtn) {
-        recenterBtn.addEventListener('click', function () {
-          map.setView(activeRoute.center, activeRoute.zoom, { animate: true });
-        });
-      }
-
-      var heatmapBtn = document.getElementById('btnToggleSafetyHeatmap');
-      if (heatmapBtn) {
-        heatmapBtn.addEventListener('click', function () {
-          if (routeGlow) {
-            var currentWeight = routeGlow.options.weight;
-            routeGlow.setStyle({ weight: currentWeight === 10 ? 22 : 10 });
-          }
-        });
-      }
-
-      // ----------------------------------------------------
-      // 8. Bottom Navigation Tabs
-      // ----------------------------------------------------
-      var tabBtns = document.querySelectorAll('.bottom-nav-btn');
-      var tabSections = document.querySelectorAll('.tab-content');
-
-      tabBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var targetId = btn.getAttribute('data-target');
-
-          // Highlight active button
-          tabBtns.forEach(function (b) {
-            b.classList.remove('text-terracotta');
-            b.classList.add('text-stone-500', 'dark:text-stone-400');
-            var pill = b.querySelector('div');
-            if (pill) pill.classList.remove('bg-terracotta/15');
-          });
-
-          btn.classList.add('text-terracotta');
-          btn.classList.remove('text-stone-500', 'dark:text-stone-400');
-          var activePill = btn.querySelector('div');
-          if (activePill) activePill.classList.add('bg-terracotta/15');
-
-          // Show active section
-          tabSections.forEach(function (sec) {
-            sec.classList.add('hidden');
-          });
-
-          var targetSec = document.getElementById(targetId);
-          if (targetSec) targetSec.classList.remove('hidden');
-
-          // Ensure map redraws if switching back to planner tab
-          if (targetId === 'tabPlanner') {
-            setTimeout(function () {
-              map.invalidateSize();
-            }, 100);
-          }
-        });
-      });
-
-      // ----------------------------------------------------
-      // 9. GPX Export Download Generator
-      // ----------------------------------------------------
-      var exportGpxBtn = document.getElementById('btnExportGpx');
-      var toastEl = document.getElementById('exportStatusToast');
-
-      if (exportGpxBtn) {
-        exportGpxBtn.addEventListener('click', function () {
-          var pts = activeRoute.path;
-          var gpxString = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-            '<gpx version="1.1" creator="PacePlot - Stride Circuit LLC" xmlns="http://www.topografix.com/GPX/1/1">\n' +
-            '  <metadata>\n' +
-            '    <name>' + activeRoute.title + '</name>\n' +
-            '    <desc>Safe Pedestrian Route mapped by Pace Plot</desc>\n' +
-            '  </metadata>\n' +
-            '  <trk>\n' +
-            '    <name>' + activeRoute.title + '</name>\n' +
-            '    <trkseg>\n';
-
-          pts.forEach(function (pt) {
-            gpxString += '      <trkpt lat="' + pt[0] + '" lon="' + pt[1] + '"><ele>210.0</ele></trkpt>\n';
-          });
-
-          gpxString += '    </trkseg>\n  </trk>\n</gpx>';
-
-          var blob = new Blob([gpxString], { type: 'application/gpx+xml' });
-          var url = URL.createObjectURL(blob);
-          var downloadAnchor = document.createElement('a');
-          downloadAnchor.href = url;
-          downloadAnchor.download = activeKey + '_pace_plot_route.gpx';
-          document.body.appendChild(downloadAnchor);
-          downloadAnchor.click();
-          document.body.removeChild(downloadAnchor);
-          URL.revokeObjectURL(url);
-
-          if (toastEl) {
-            toastEl.classList.remove('hidden');
-            setTimeout(function () {
-              toastEl.classList.add('hidden');
-            }, 3000);
-          }
-        });
-      }
-
-      // Share button copy
-      var shareBtn = document.getElementById('btnShareRoute');
-      if (shareBtn) {
-        shareBtn.addEventListener('click', function () {
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText("https://stride-circuit-llc.polsia.io/route-preview?id=" + activeKey);
-            }
-          } catch (_) {}
-          if (toastEl) {
-            toastEl.innerHTML = '<i class="fa-solid fa-check"></i> Link copied to clipboard!';
-            toastEl.classList.remove('hidden');
-            setTimeout(function () {
-              toastEl.classList.add('hidden');
-            }, 3000);
-          }
-        });
-      }
-
-      // ----------------------------------------------------
-      // 10. Event "Plan from Start Line" Handlers
-      // ----------------------------------------------------
-      var planFromEventBtns = document.querySelectorAll('.btn-plan-from-event');
-      planFromEventBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var loc = btn.getAttribute('data-location') || 'parma';
-          if (presetSelect) presetSelect.value = loc;
-          if (routes[loc]) {
-            if (isNavigating) stopNavigation();
-            activeKey = loc;
-            activeRoute = routes[loc];
-            renderRouteOnMap(activeRoute);
-          }
-          // Switch to map tab
-          var mapTabBtn = document.querySelector('.bottom-nav-btn[data-target="tabPlanner"]');
-          if (mapTabBtn) mapTabBtn.click();
-          speakInstruction("Race coordinates loaded. Ready to navigate.");
-        });
-      });
-
-      // ----------------------------------------------------
-      // 11. Viewport / Frame Toggle (Mobile Device vs Fullscreen)
-      // ----------------------------------------------------
-      var frameBtn = document.getElementById('toggleDeviceFrame');
-      var appContainer = document.getElementById('appContainer');
-      var frameModeText = document.getElementById('frameModeText');
-      var isFullscreen = false;
-
-      if (frameBtn && appContainer && frameModeText) {
-        frameBtn.addEventListener('click', function () {
-          isFullscreen = !isFullscreen;
-          if (isFullscreen) {
-            appContainer.classList.remove('max-w-[420px]', 'h-[840px]', 'max-h-[92vh]', 'rounded-[36px]', 'border-[8px]');
-            appContainer.classList.add('max-w-5xl', 'h-[85vh]', 'rounded-2xl', 'border-2');
-            frameModeText.textContent = 'Phone View';
-          } else {
-            appContainer.classList.add('max-w-[420px]', 'h-[840px]', 'max-h-[92vh]', 'rounded-[36px]', 'border-[8px]');
-            appContainer.classList.remove('max-w-5xl', 'h-[85vh]', 'rounded-2xl', 'border-2');
-            frameModeText.textContent = 'Fullscreen';
-          }
-          setTimeout(function () {
-            map.invalidateSize();
-          }, 300);
-        });
-      }
-
-      // ----------------------------------------------------
-      // 12. Theme Toggle (Dark / Light)
-      // ----------------------------------------------------
-      var themeBtn = document.getElementById('toggleTheme');
-      var themeIcon = document.getElementById('themeIcon');
-      var isDark = true;
-      document.documentElement.classList.add('dark');
-
-      if (themeBtn && themeIcon) {
-        themeBtn.addEventListener('click', function () {
-          isDark = !isDark;
-          if (isDark) {
-            document.documentElement.classList.add('dark');
-            themeIcon.className = 'fa-solid fa-moon';
-          } else {
-            document.documentElement.classList.remove('dark');
-            themeIcon.className = 'fa-solid fa-sun';
-          }
-        });
-      }
-
-
-      // ----------------------------------------------------
-      // 13. Live OpenStreetMap / Photon Geocoding API
-      // ----------------------------------------------------
-      var inputSearch = document.getElementById('inputLocationSearch');
-      var btnSearchSubmit = document.getElementById('btnSearchSubmit');
-      var btnClearSearch = document.getElementById('btnClearSearch');
-      var suggestionsList = document.getElementById('searchSuggestionsList');
-      var searchDebounceTimer = null;
-
-      function performSearch(query) {
-        if (!query || query.trim().length < 2) {
-          if (suggestionsList) suggestionsList.classList.add('hidden');
-          return;
-        }
-
-        // Call live Photon Komoot Geocoder (Free OpenStreetMap Geocoding API)
-        var apiUrl = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(query) + '&limit=5';
-        fetch(apiUrl)
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            if (!suggestionsList) return;
-            suggestionsList.innerHTML = '';
-
-            if (!data.features || data.features.length === 0) {
-              suggestionsList.innerHTML = '<div class="p-3 text-stone-500 text-center text-xs">No locations found. Try city or street name.</div>';
-              suggestionsList.classList.remove('hidden');
-              return;
-            }
-
-            data.features.forEach(function (feat) {
-              var p = feat.properties;
-              var name = p.name || p.street || 'Location';
-              var sub = [p.city, p.state, p.country].filter(Boolean).join(', ');
-              var coords = feat.geometry.coordinates; // [lon, lat]
-
-              var item = document.createElement('div');
-              item.className = 'p-2.5 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer border-b border-stone-100 dark:border-stone-700 last:border-none flex items-center gap-2.5 transition';
-              item.innerHTML = '<i class="fa-solid fa-location-dot text-terracotta text-xs flex-shrink-0"></i>' +
-                '<div class="truncate flex-1">' +
-                  '<div class="font-bold text-stone-900 dark:text-white truncate">' + name + '</div>' +
-                  '<div class="text-[10px] text-stone-500 truncate">' + sub + '</div>' +
-                '</div>';
-
-              item.addEventListener('click', function () {
-                var lat = coords[1];
-                var lon = coords[0];
-                selectSearchedLocation(name, lat, lon);
-              });
-
-              suggestionsList.appendChild(item);
-            });
-
-            suggestionsList.classList.remove('hidden');
-          })
-          .catch(function () {
-            if (suggestionsList) {
-              suggestionsList.innerHTML = '<div class="p-3 text-stone-500 text-center text-xs">Offline or network error searching OSM.</div>';
-              suggestionsList.classList.remove('hidden');
-            }
-          });
-      }
-
-      function selectSearchedLocation(label, lat, lon) {
-        if (inputSearch) inputSearch.value = label;
-        if (suggestionsList) suggestionsList.classList.add('hidden');
-        if (btnClearSearch) btnClearSearch.classList.remove('hidden');
-
-        // Synthesize a safe loop around the searched coordinate
-        var delta = 0.007; // ~0.7 miles offset
-        var newPath = [
-          [lat, lon],
-          [lat + delta * 0.9, lon + delta * 0.4],
-          [lat + delta * 1.4, lon - delta * 0.5],
-          [lat + delta * 0.6, lon - delta * 1.1],
-          [lat - delta * 0.4, lon - delta * 0.7],
-          [lat - delta * 0.2, lon + delta * 0.2],
-          [lat, lon]
-        ];
-
-        var customRoute = {
-          title: label + ' Safe AI Loop',
-          center: [lat, lon],
-          zoom: 14,
-          distance: 3.25,
-          elevation: '+38 ft',
-          safetyScore: '9.6',
-          safetyTags: ['Continuous Sidewalks', 'Lit Corridors', 'Low Traffic'],
-          path: newPath,
-          maneuvers: [
-            { text: "Start run heading North from " + label, dist: "Start", icon: "fa-arrow-up", note: "Pedestrian walkway" },
-            { text: "In 300 feet, turn right onto well-lit corridor", dist: "In 300 ft", icon: "fa-arrow-right", note: "Dedicated sidewalk" },
-            { text: "Bear left along park connector path", dist: "In 500 ft", icon: "fa-arrow-turn-up-left", note: "Traffic separated" },
-            { text: "Turn right onto loop perimeter", dist: "In 200 ft", icon: "fa-arrow-right", note: "Low traffic residential" },
-            { text: "Heading back towards " + label + " start line", dist: "In 100 ft", icon: "fa-flag-checkered", note: "Finish loop" }
-          ]
-        };
-
-        if (isNavigating) stopNavigation();
-        activeRoute = customRoute;
-        renderRouteOnMap(activeRoute);
-        speakInstruction("Safe run mapped at " + label + ". Ready to start.");
-      }
-
-      if (inputSearch) {
-        inputSearch.addEventListener('input', function (e) {
-          var val = e.target.value;
-          if (btnClearSearch) {
-            if (val.length > 0) btnClearSearch.classList.remove('hidden');
-            else btnClearSearch.classList.add('hidden');
-          }
-          clearTimeout(searchDebounceTimer);
-          searchDebounceTimer = setTimeout(function () {
-            performSearch(val);
-          }, 350);
-        });
-
-        inputSearch.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') {
-            performSearch(inputSearch.value);
-          }
-        });
-      }
-
-      if (btnClearSearch) {
-        btnClearSearch.addEventListener('click', function () {
-          if (inputSearch) inputSearch.value = '';
-          btnClearSearch.classList.add('hidden');
-          if (suggestionsList) suggestionsList.classList.add('hidden');
-        });
-      }
-
-      if (btnSearchSubmit) {
-        btnSearchSubmit.addEventListener('click', function () {
-          if (inputSearch) performSearch(inputSearch.value);
-        });
-      }
-
-      // Close suggestions when clicking outside
-      document.addEventListener('click', function (e) {
-        if (suggestionsList && inputSearch && !suggestionsList.contains(e.target) && e.target !== inputSearch) {
-          suggestionsList.classList.add('hidden');
-        }
-      });
-
-      // ----------------------------------------------------
-      // 14. Stride SafeGuard™ & Emergency SOS Handlers
-      // ----------------------------------------------------
-      var btnCopyTracking = document.getElementById('btnCopyTrackingLink');
-      var copyLinkText = document.getElementById('copyLinkText');
-      if (btnCopyTracking) {
-        btnCopyTracking.addEventListener('click', function () {
-          var trackingId = document.getElementById('beaconTrackingId');
-          var link = 'https://paceplot.app/track/' + (trackingId ? trackingId.textContent : 'stride-safe-7b49');
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(link);
-            }
-          } catch (_) {}
-          if (copyLinkText) {
-            copyLinkText.textContent = 'Copied!';
-            setTimeout(function () {
-              copyLinkText.textContent = 'Copy';
-            }, 2000);
-          }
-        });
-      }
-
-      // Add emergency contact modal toggle
-      var btnAddContact = document.getElementById('btnAddContactModal');
-      var addContactForm = document.getElementById('addContactForm');
-      var btnCancelContact = document.getElementById('btnCancelContact');
-      var btnSaveContact = document.getElementById('btnSaveNewContact');
-      var contactsList = document.getElementById('emergencyContactsList');
-
-      if (btnAddContact && addContactForm) {
-        btnAddContact.addEventListener('click', function () {
-          addContactForm.classList.toggle('hidden');
-        });
-      }
-
-      if (btnCancelContact && addContactForm) {
-        btnCancelContact.addEventListener('click', function () {
-          addContactForm.classList.add('hidden');
-        });
-      }
-
-      if (btnSaveContact && contactsList) {
-        btnSaveContact.addEventListener('click', function () {
-          var nameInput = document.getElementById('newContactName');
-          var phoneInput = document.getElementById('newContactPhone');
-          var name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Emergency Contact';
-          var phone = phoneInput && phoneInput.value.trim() ? phoneInput.value.trim() : '(216) 555-0100';
-
-          var newCard = document.createElement('div');
-          newCard.className = 'p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40 border border-stone-100 dark:border-stone-700 flex items-center justify-between animate-fadeIn';
-          newCard.innerHTML = '<div class="flex items-center gap-2.5">' +
-              '<div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 font-bold text-xs flex items-center justify-center">' +
-                name.slice(0, 2).toUpperCase() +
-              '</div>' +
-              '<div>' +
-                '<h4 class="text-xs font-bold text-stone-900 dark:text-white">' + name + '</h4>' +
-                '<p class="text-[10px] text-stone-500">' + phone + ' • Live Link Recipient</p>' +
-              '</div>' +
-            '</div>' +
-            '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">Added</span>';
-
-          contactsList.appendChild(newCard);
-          if (nameInput) nameInput.value = '';
-          if (phoneInput) phoneInput.value = '';
-          if (addContactForm) addContactForm.classList.add('hidden');
-          speakInstruction("New emergency contact added to Stride SafeGuard.");
-        });
-      }
-
-      // Emergency SOS Countdown Test
-      var btnTestSOS = document.getElementById('btnTriggerTestSOS');
-      var sosBanner = document.getElementById('sosAlertBanner');
-      var sosSecondsEl = document.getElementById('sosCountdownSeconds');
-      var btnCancelSos = document.getElementById('btnCancelSosCountdown');
-      var sosInterval = null;
-
-      if (btnTestSOS && sosBanner && sosSecondsEl) {
-        btnTestSOS.addEventListener('click', function () {
-          sosBanner.classList.remove('hidden');
-          var count = 45;
-          sosSecondsEl.textContent = count.toString();
-          speakInstruction("Emergency warning! Immobility detected. Alerting emergency contacts in 45 seconds.");
-
-          clearInterval(sosInterval);
-          sosInterval = setInterval(function () {
-            count--;
-            sosSecondsEl.textContent = count.toString();
-            if (count === 30 || count === 15) {
-              playTurnChime();
-            }
-            if (count <= 0) {
-              clearInterval(sosInterval);
-              sosBanner.innerHTML = '<div class="text-center font-bold text-sm"><i class="fa-solid fa-paper-plane mr-2"></i>Emergency SMS dispatched to all contacts with live GPS coordinates.</div>';
-              speakInstruction("Emergency distress SMS dispatched to contacts.");
-            }
-          }, 1000);
-        });
-      }
-
-      if (btnCancelSos && sosBanner) {
-        btnCancelSos.addEventListener('click', function () {
-          clearInterval(sosInterval);
-          sosBanner.classList.add('hidden');
-          speakInstruction("Emergency alert cancelled. You are marked safe.");
-        });
-      }
-
-    });
-  </script>
+  <!-- Application Module Script (Vite Bundled) -->
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

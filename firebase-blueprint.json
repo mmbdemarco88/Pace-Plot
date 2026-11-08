@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email"]
+    },
+    "SavedRoute": {
+      "title": "SavedRoute",
+      "description": "User custom or saved pedestrian running route",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "distance": { "type": "number" },
+        "safetyScore": { "type": "string", "maxLength": 10 },
+        "locationName": { "type": "string", "maxLength": 150 },
+        "elevation": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "title", "distance"]
+    },
+    "EmergencyContact": {
+      "title": "EmergencyContact",
+      "description": "Stride SafeGuard emergency contact",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "role": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "name", "phone"]
+    },
+    "RunActivity": {
+      "title": "RunActivity",
+      "description": "Completed run or walk activity record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "routeTitle": { "type": "string", "maxLength": 150 },
+        "distance": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "avgPace": { "type": "string", "maxLength": 20 },
+        "avgHeartRate": { "type": "number" },
+        "calories": { "type": "number" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["userId", "distance", "durationSeconds"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile collection partitioned by UID"
+    },
+    "/savedRoutes/{routeId}": {
+      "schema": "SavedRoute",
+      "description": "Saved running loops owned by users"
+    },
+    "/emergencyContacts/{contactId}": {
+      "schema": "EmergencyContact",
+      "description": "Stride SafeGuard emergency contacts"
+    },
+    "/runActivities/{activityId}": {
+      "schema": "RunActivity",
+      "description": "Recorded run workout history"
+    }
+  }
+}
