@@ -46,7 +46,11 @@ import {
   formatTime,
   saveActivePlan,
   loadActivePlan,
-  EVENT_GOALS
+  EVENT_GOALS,
+  deriveHistoricalMaxHeartRate,
+  calculateHeartRateZones,
+  getStoredMaxHrOverride,
+  setStoredMaxHrOverride
 } from './trainingPlan.js';
 import {
   initSpotifyController,
@@ -77,6 +81,7 @@ import {
   getStoredTheme,
   initThemeController
 } from './theme.js';
+import { renderD3HeartRateZonesBarChart } from './hrZoneChart.js';
 
 // HTML Entity Escaping Helper (DOM XSS Defense)
 function escapeHtml(value) {
@@ -270,10 +275,12 @@ let speechVoices = [];
 let selectedVoice = null;
 let currentUtterance = null; // Retain reference to prevent browser GC
 
-// Custom Training Plan State
+// Custom Training Plan & Heart Rate Zones State
 let currentGoalId = '5k';
 let currentPlanWeek = 0;
 let activeTrainingPlan = null;
+let historicalWorkoutsCache = [];
+let currentLiveSensorHr = 148;
 
 // ----------------------------------------------------
 // Initialize Application
@@ -284,6 +291,7 @@ function startApp() {
   initSafetyDisclaimer();
   initBadgesAndPremium();
   initTrainingPlan();
+  renderHeartRateZonesUI();
   initSpotifyMiniPlayerUI();
   setupUIHandlers();
   initGoogleMaps();
@@ -398,6 +406,168 @@ function initTrainingPlan() {
   }
 
   updateTrainingPlanUI();
+}
+
+function renderHeartRateZonesUI() {
+  const customOverride = getStoredMaxHrOverride();
+  const maxHrInfo = deriveHistoricalMaxHeartRate(historicalWorkoutsCache, customOverride);
+  const zoneData = calculateHeartRateZones(
+    maxHrInfo.effectiveMaxHr,
+    historicalWorkoutsCache,
+    currentLiveSensorHr
+  );
+
+  // 1. Live Biometrics Header Badge & Sensor HR
+  const liveZoneBadge = document.getElementById('liveBiometricZoneBadge');
+  const healthHeartRate = document.getElementById('healthHeartRate');
+  if (liveZoneBadge && zoneData.activeZone) {
+    liveZoneBadge.className = `px-2 py-0.5 rounded-md text-[10px] font-mono tabular-nums font-bold border ${zoneData.activeZone.badgeClass}`;
+    liveZoneBadge.textContent = `${zoneData.activeZone.code} ${zoneData.activeZone.shortName} · ${zoneData.livePctOfMax}% HRmax`;
+  }
+  if (healthHeartRate) {
+    healthHeartRate.innerHTML = `${zoneData.liveHr} <span class="text-[10px] font-sans font-normal text-stone-400">bpm</span>`;
+  }
+
+  // 2. Historical Max HR Telemetry Summary Box
+  const hrMaxBpmValue = document.getElementById('hrMaxBpmValue');
+  const hrHistoricalAvgValue = document.getElementById('hrHistoricalAvgValue');
+  const hrMaxSourceLabel = document.getElementById('hrMaxSourceLabel');
+  const btnMaxHrResetAuto = document.getElementById('btnMaxHrResetAuto');
+
+  if (hrMaxBpmValue) {
+    hrMaxBpmValue.textContent = String(maxHrInfo.effectiveMaxHr);
+  }
+  if (hrHistoricalAvgValue) {
+    hrHistoricalAvgValue.textContent = `${maxHrInfo.historicalAvgHr} bpm`;
+  }
+  if (hrMaxSourceLabel) {
+    if (maxHrInfo.isCustomOverride) {
+      hrMaxSourceLabel.textContent = `Custom Ceiling (${maxHrInfo.effectiveMaxHr} bpm) · Hist Peak: ${maxHrInfo.detectedMaxHr} bpm`;
+    } else {
+      hrMaxSourceLabel.textContent = `Peak from ${maxHrInfo.totalWorkoutsAnalyzed} Historical Runs · ${maxHrInfo.peakWorkoutTitle}`;
+    }
+  }
+  if (btnMaxHrResetAuto) {
+    btnMaxHrResetAuto.textContent = maxHrInfo.isCustomOverride
+      ? `Reset (${maxHrInfo.detectedMaxHr})`
+      : `Auto (${maxHrInfo.detectedMaxHr})`;
+  }
+
+  // 3. Stacked 5-Zone Distribution Bar & Zone 2 Target Summary
+  const zone2 = zoneData.zones[1];
+  const hrZone2TargetLabel = document.getElementById('hrZone2TargetLabel');
+  const hrZone2TargetStats = document.getElementById('hrZone2TargetStats');
+  const hrZonesStackedBar = document.getElementById('hrZonesStackedBar');
+  const hrZonesLegendRow = document.getElementById('hrZonesLegendRow');
+
+  if (zone2 && hrZone2TargetLabel) {
+    hrZone2TargetLabel.textContent = `Zone 2 Aerobic Base (${zone2.rangeLabel})`;
+  }
+  if (zone2 && hrZone2TargetStats) {
+    hrZone2TargetStats.textContent = `${zone2.percentage}% · ${zone2.durationFormatted}`;
+  }
+
+  if (hrZonesStackedBar) {
+    hrZonesStackedBar.innerHTML = zoneData.zones
+      .map(
+        (z) =>
+          `<div class="${escapeHtml(z.colorClass)} h-full transition-all duration-300" style="width: ${Math.max(2, z.percentage)}%;" title="${escapeHtml(`${z.code} ${z.name}: ${z.rangeLabel} (${z.percentage}% · ${z.durationFormatted})`)}"></div>`
+      )
+      .join('');
+  }
+
+  if (hrZonesLegendRow) {
+    hrZonesLegendRow.innerHTML = zoneData.zones
+      .map(
+        (z) =>
+          `<span class="${z.zone === 2 ? 'text-emerald-500 font-bold' : ''}">${escapeHtml(z.code)} (${z.percentage}%)</span>`
+      )
+      .join('');
+  }
+
+  // 3b. D3.js Bar Chart: Weekly Workout Time Distribution Across Personalized HR Zones
+  const d3ChartContainer = document.getElementById('d3HrZonesChartContainer');
+  const d3ChartTotalTimeBadge = document.getElementById('d3ChartTotalTimeBadge');
+  if (d3ChartContainer) {
+    const chartModel = renderD3HeartRateZonesBarChart(d3ChartContainer, zoneData, {
+      isDark: getStoredTheme() === THEME_MODES.DARK,
+      onZoneClick: (d) => {
+        playTurnChime();
+        speakInstruction(
+          `${d.code} ${d.name}, ${d.rangeLabel}: ${d.durationFormatted} (${d.minutesRounded} minutes, ${d.percentage} percent of your weekly training time). ${d.benefit}.`
+        );
+      }
+    });
+    if (chartModel && d3ChartTotalTimeBadge) {
+      d3ChartTotalTimeBadge.textContent = `${chartModel.totalMinutes}m (${chartModel.totalDurationFormatted})`;
+    }
+  }
+
+  // 4. Specific 5-Zone Personalized BPM & Time Breakdown List
+  const breakdownContainer = document.getElementById('hrZonesBreakdownList');
+  if (breakdownContainer) {
+    breakdownContainer.innerHTML = '';
+    zoneData.zones.forEach((z) => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = `w-full text-left p-2.5 rounded-xl border transition cursor-pointer ${
+        z.isLiveZone
+          ? 'bg-stone-100/90 dark:bg-stone-700/60 border-terracotta/50 shadow-xs'
+          : 'bg-stone-50/70 dark:bg-stone-800/60 border-stone-200/70 dark:border-stone-700/70 hover:border-stone-300 dark:hover:border-stone-600'
+      }`;
+
+      row.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-mono tabular-nums font-extrabold border ${escapeHtml(z.badgeClass)}">
+              ${escapeHtml(z.code)}
+            </span>
+            <span class="text-xs font-extrabold text-stone-900 dark:text-white truncate">
+              ${escapeHtml(z.name)}
+            </span>
+            <span class="text-[10px] font-mono tabular-nums text-stone-400">
+              ${escapeHtml(z.pctRangeLabel)}
+            </span>
+            ${
+              z.isLiveZone
+                ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 border border-rose-500/30 text-[9px] font-mono tabular-nums font-black flex items-center gap-1">
+                     <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                     LIVE ${zoneData.liveHr}
+                   </span>`
+                : ''
+            }
+          </div>
+          <div class="text-right shrink-0">
+            <span class="text-xs font-black font-mono tabular-nums ${escapeHtml(z.textClass)}">
+              ${escapeHtml(z.rangeLabel)}
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-1.5 flex items-center gap-2">
+          <div class="flex-1 h-1.5 rounded-full bg-stone-200/80 dark:bg-stone-700 overflow-hidden">
+            <div class="${escapeHtml(z.colorClass)} h-full rounded-full transition-all duration-300" style="width: ${Math.max(4, z.percentage)}%;"></div>
+          </div>
+          <span class="text-[10px] font-mono tabular-nums font-bold text-stone-600 dark:text-stone-300 shrink-0 w-24 text-right">
+            ${z.percentage}% · ${escapeHtml(z.durationFormatted)}
+          </span>
+        </div>
+
+        <p class="text-[10px] text-stone-500 dark:text-stone-400 mt-1 leading-tight">
+          ${escapeHtml(z.benefit)}
+        </p>
+      `;
+
+      row.addEventListener('click', () => {
+        playTurnChime();
+        speakInstruction(
+          `Zone ${z.zone}, ${z.name}: ${z.minBpm} to ${z.maxBpm} beats per minute, representing ${z.minPct} to ${z.maxPct} percent of your ${zoneData.maxHr} maximum heart rate. Historical training time: ${z.durationFormatted} (${z.percentage} percent). ${z.benefit}.`
+        );
+      });
+
+      breakdownContainer.appendChild(row);
+    });
+  }
 }
 
 function updateTrainingPlanUI() {
@@ -1760,6 +1930,8 @@ function stopNavigation() {
       playTurnChime();
       speakInstruction(`Achievement unlocked: ${badge.title} badge! ${badge.subtitle}`);
     });
+    historicalWorkoutsCache = [workoutData, ...historicalWorkoutsCache];
+    renderHeartRateZonesUI();
     if (currentUser) {
       addRunActivity(workoutData).catch(err => console.error("Could not auto-save run activity:", err));
     }
@@ -1845,6 +2017,8 @@ function updateNavStep(index, isFirstStep = false) {
   if (hudHR) {
     const hr = 144 + (index * 2);
     hudHR.textContent = `${hr} bpm`;
+    currentLiveSensorHr = hr;
+    renderHeartRateZonesUI();
   }
 }
 
@@ -2564,6 +2738,7 @@ function setupUIHandlers() {
 
   initThemeController((theme) => {
     updateSettingsThemeStatusLabel(theme);
+    renderHeartRateZonesUI();
     const mapEl = document.getElementById('map');
     if (mapEl && googleMap) {
       // Never set 'styles' when mapId is present (causes Google Maps JS API warning)
@@ -2584,6 +2759,41 @@ function setupUIHandlers() {
         btnToggleHealthConnect.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition';
         speakInstruction("Health Connect biometrics synchronized.");
       }
+    });
+  }
+
+  // Historical Max Heart Rate Zone Calibration Controls (Health Tab)
+  const btnMaxHrMinus = document.getElementById('btnMaxHrMinus');
+  const btnMaxHrPlus = document.getElementById('btnMaxHrPlus');
+  const btnMaxHrResetAuto = document.getElementById('btnMaxHrResetAuto');
+
+  if (btnMaxHrMinus) {
+    btnMaxHrMinus.addEventListener('click', () => {
+      const info = deriveHistoricalMaxHeartRate(historicalWorkoutsCache, getStoredMaxHrOverride());
+      const nextMax = setStoredMaxHrOverride(info.effectiveMaxHr - 2);
+      renderHeartRateZonesUI();
+      playTurnChime();
+      speakInstruction(`Calibrated maximum heart rate to ${nextMax} beats per minute.`);
+    });
+  }
+
+  if (btnMaxHrPlus) {
+    btnMaxHrPlus.addEventListener('click', () => {
+      const info = deriveHistoricalMaxHeartRate(historicalWorkoutsCache, getStoredMaxHrOverride());
+      const nextMax = setStoredMaxHrOverride(info.effectiveMaxHr + 2);
+      renderHeartRateZonesUI();
+      playTurnChime();
+      speakInstruction(`Calibrated maximum heart rate to ${nextMax} beats per minute.`);
+    });
+  }
+
+  if (btnMaxHrResetAuto) {
+    btnMaxHrResetAuto.addEventListener('click', () => {
+      setStoredMaxHrOverride(null);
+      const info = deriveHistoricalMaxHeartRate(historicalWorkoutsCache, null);
+      renderHeartRateZonesUI();
+      playTurnChime();
+      speakInstruction(`Reset maximum heart rate ceiling to historical peak of ${info.detectedMaxHr} beats per minute.`);
     });
   }
 
@@ -2993,6 +3203,9 @@ function setupFirebaseAuth() {
         speakInstruction(`Achievement unlocked: ${badge.title} badge! ${badge.subtitle}`);
       });
 
+      historicalWorkoutsCache = [workoutData, ...historicalWorkoutsCache];
+      renderHeartRateZonesUI();
+
       if (currentUser) {
         try {
           await addRunActivity(workoutData);
@@ -3237,6 +3450,9 @@ function renderCloudContacts(contactsList) {
 
 // Render Cloud Workouts History
 function renderCloudWorkouts(workoutsList) {
+  historicalWorkoutsCache = Array.isArray(workoutsList) ? workoutsList : [];
+  renderHeartRateZonesUI();
+
   const container = document.getElementById('workoutsHistoryList');
   if (!container) return;
 

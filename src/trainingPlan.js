@@ -325,3 +325,392 @@ export function loadActivePlan() {
   } catch (_) {}
   return null;
 }
+
+// ----------------------------------------------------
+// Historical Max Heart Rate & 5-Zone Biometric Engine
+// ----------------------------------------------------
+export const MAX_HR_OVERRIDE_STORAGE_KEY = 'paceplot_custom_max_hr';
+
+export const DEFAULT_HISTORICAL_WORKOUTS = [
+  {
+    id: 'hist-mon',
+    day: 'Mon',
+    routeTitle: 'Easy Greenway Loop',
+    distance: 3.1,
+    durationSeconds: 1620,
+    avgPace: "8'42\"",
+    avgHeartRate: 124,
+    maxHeartRate: 142
+  },
+  {
+    id: 'hist-tue',
+    day: 'Tue',
+    routeTitle: 'Aerobic Base Corridor',
+    distance: 4.5,
+    durationSeconds: 2340,
+    avgPace: "8'40\"",
+    avgHeartRate: 126,
+    maxHeartRate: 145
+  },
+  {
+    id: 'hist-thu',
+    day: 'Thu',
+    routeTitle: 'Watershed Tempo Progression',
+    distance: 5.0,
+    durationSeconds: 2520,
+    avgPace: "8'24\"",
+    avgHeartRate: 146,
+    maxHeartRate: 171
+  },
+  {
+    id: 'hist-fri',
+    day: 'Fri',
+    routeTitle: 'Lit Sidewalk Recovery Flush',
+    distance: 3.1,
+    durationSeconds: 1740,
+    avgPace: "9'21\"",
+    avgHeartRate: 109,
+    maxHeartRate: 123
+  },
+  {
+    id: 'hist-sat',
+    day: 'Sat',
+    routeTitle: '10K Threshold Benchmark',
+    distance: 6.2,
+    durationSeconds: 3060,
+    avgPace: "8'13\"",
+    avgHeartRate: 162,
+    maxHeartRate: 188
+  },
+  {
+    id: 'hist-sun',
+    day: 'Sun',
+    routeTitle: 'Sunday Park Perimeter Long Run',
+    distance: 4.0,
+    durationSeconds: 2040,
+    avgPace: "8'30\"",
+    avgHeartRate: 125,
+    maxHeartRate: 144
+  }
+];
+
+export function getStoredMaxHrOverride(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(MAX_HR_OVERRIDE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed >= 130 && parsed <= 225) {
+      return Math.round(parsed);
+    }
+  } catch (_) {}
+  return null;
+}
+
+export function setStoredMaxHrOverride(maxHrValue, storage = typeof localStorage !== 'undefined' ? localStorage : null) {
+  if (!storage) return null;
+  try {
+    if (maxHrValue === null || maxHrValue === undefined || maxHrValue === '') {
+      storage.removeItem(MAX_HR_OVERRIDE_STORAGE_KEY);
+      return null;
+    }
+    const clamped = Math.max(130, Math.min(225, Math.round(Number(maxHrValue))));
+    if (Number.isFinite(clamped)) {
+      storage.setItem(MAX_HR_OVERRIDE_STORAGE_KEY, String(clamped));
+      return clamped;
+    }
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Derives the user's historical maximum heart rate, average heart rate, and peak session
+ * from their baseline training log combined with any synced Firestore/logged workouts.
+ */
+export function deriveHistoricalMaxHeartRate(extraWorkouts = [], overrideMaxHr = null, includeBaseline = true) {
+  const validExtras = Array.isArray(extraWorkouts)
+    ? extraWorkouts.filter(w => w && (Number(w.avgHeartRate) > 0 || Number(w.maxHeartRate) > 0))
+    : [];
+
+  const combined = includeBaseline
+    ? [...DEFAULT_HISTORICAL_WORKOUTS, ...validExtras]
+    : (validExtras.length > 0 ? validExtras : [...DEFAULT_HISTORICAL_WORKOUTS]);
+
+  let detectedMaxHr = 188;
+  let peakWorkoutTitle = '10K Threshold Benchmark';
+  let totalWeightedHr = 0;
+  let totalDurationSec = 0;
+  let highestPeakSeen = 0;
+
+  combined.forEach((w) => {
+    const dur = Math.max(300, Number(w.durationSeconds) || 1500);
+    const avgHr = Number(w.avgHeartRate) || 142;
+    const explicitMax = Number(w.maxHeartRate) || 0;
+    // Estimate peak HR from session avgHeartRate when explicit maxHeartRate is not stored in cloud schema
+    const estimatedPeak = explicitMax > 0
+      ? explicitMax
+      : Math.round(avgHr * (avgHr >= 160 ? 1.15 : 1.21));
+
+    if (estimatedPeak > highestPeakSeen) {
+      highestPeakSeen = estimatedPeak;
+      peakWorkoutTitle = w.routeTitle || 'Recorded Workout';
+    }
+
+    totalWeightedHr += avgHr * dur;
+    totalDurationSec += dur;
+  });
+
+  if (highestPeakSeen > 0) {
+    detectedMaxHr = Math.max(140, Math.min(220, Math.round(highestPeakSeen)));
+  }
+
+  const historicalAvgHr = totalDurationSec > 0
+    ? Math.round(totalWeightedHr / totalDurationSec)
+    : 135;
+
+  const hasOverride = overrideMaxHr !== null && overrideMaxHr !== undefined && overrideMaxHr !== ''
+    && Number.isFinite(Number(overrideMaxHr)) && Number(overrideMaxHr) >= 130 && Number(overrideMaxHr) <= 225;
+  const effectiveMaxHr = hasOverride
+    ? Math.round(Number(overrideMaxHr))
+    : detectedMaxHr;
+
+  return {
+    effectiveMaxHr,
+    detectedMaxHr,
+    isCustomOverride: hasOverride,
+    historicalAvgHr,
+    peakWorkoutTitle,
+    totalWorkoutsAnalyzed: combined.length,
+    totalDurationSeconds: totalDurationSec,
+    totalDurationFormatted: formatTime(totalDurationSec)
+  };
+}
+
+/**
+ * Computes the runner's 5 personalized Heart Rate Zones based on their Historical Max HR,
+ * distributes their historical workout time across the 5 zones, and identifies the live zone.
+ */
+export function calculateHeartRateZones(maxHr = 188, extraWorkouts = [], currentLiveHr = 148, includeBaseline = true) {
+  const safeMaxHr = Math.max(130, Math.min(225, Math.round(Number(maxHr) || 188)));
+  const safeLiveHr = Math.max(50, Math.min(230, Math.round(Number(currentLiveHr) || 148)));
+
+  const z1Min = Math.round(safeMaxHr * 0.50);
+  const z2Min = Math.round(safeMaxHr * 0.60);
+  const z3Min = Math.round(safeMaxHr * 0.70);
+  const z4Min = Math.round(safeMaxHr * 0.80);
+  const z5Min = Math.round(safeMaxHr * 0.90);
+
+  const zonesTemplate = [
+    {
+      zone: 1,
+      code: 'Z1',
+      name: 'Warmup & Recovery',
+      shortName: 'Recovery',
+      minPct: 50,
+      maxPct: 60,
+      minBpm: z1Min,
+      maxBpm: z2Min - 1,
+      colorClass: 'bg-sky-400',
+      textClass: 'text-sky-500 dark:text-sky-400',
+      badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/25',
+      benefit: 'Active cellular recovery, warmup capillary flow & low-stress flush'
+    },
+    {
+      zone: 2,
+      code: 'Z2',
+      name: 'Aerobic Base (Target)',
+      shortName: 'Aerobic Base',
+      minPct: 60,
+      maxPct: 70,
+      minBpm: z2Min,
+      maxBpm: z3Min - 1,
+      colorClass: 'bg-emerald-500',
+      textClass: 'text-emerald-600 dark:text-emerald-400',
+      badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
+      benefit: 'Mitochondrial density, fat oxidation & foundational endurance stamina'
+    },
+    {
+      zone: 3,
+      code: 'Z3',
+      name: 'Aerobic Tempo',
+      shortName: 'Tempo',
+      minPct: 70,
+      maxPct: 80,
+      minBpm: z3Min,
+      maxBpm: z4Min - 1,
+      colorClass: 'bg-amber-500',
+      textClass: 'text-amber-600 dark:text-amber-400',
+      badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/25',
+      benefit: 'Cardiovascular efficiency, glycogen economy & sustained cruise rhythm'
+    },
+    {
+      zone: 4,
+      code: 'Z4',
+      name: 'Lactate Threshold',
+      shortName: 'Threshold',
+      minPct: 80,
+      maxPct: 90,
+      minBpm: z4Min,
+      maxBpm: z5Min - 1,
+      colorClass: 'bg-orange-500',
+      textClass: 'text-orange-600 dark:text-orange-400',
+      badgeClass: 'bg-orange-500/10 text-orange-600 dark:text-orange-300 border-orange-500/25',
+      benefit: 'Lactate clearance ceiling, fast-twitch recruitment & 5K/10K race pace'
+    },
+    {
+      zone: 5,
+      code: 'Z5',
+      name: 'VO2 Max Anaerobic Peak',
+      shortName: 'VO2 Peak',
+      minPct: 90,
+      maxPct: 100,
+      minBpm: z5Min,
+      maxBpm: safeMaxHr,
+      colorClass: 'bg-rose-500',
+      textClass: 'text-rose-600 dark:text-rose-400',
+      badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/25',
+      benefit: 'Maximum oxygen uptake ceiling, neuromuscular power & finishing sprint'
+    }
+  ];
+
+  const validExtras = Array.isArray(extraWorkouts)
+    ? extraWorkouts.filter(w => w && (Number(w.avgHeartRate) > 0 || Number(w.durationSeconds) > 0))
+    : [];
+
+  const combinedWorkouts = includeBaseline
+    ? [...DEFAULT_HISTORICAL_WORKOUTS, ...validExtras]
+    : (validExtras.length > 0 ? validExtras : [...DEFAULT_HISTORICAL_WORKOUTS]);
+
+  const zoneSeconds = [0, 0, 0, 0, 0];
+
+  combinedWorkouts.forEach((w) => {
+    const dur = Math.max(60, Number(w.durationSeconds) || 1500);
+    const avgHr = Number(w.avgHeartRate) || 138;
+    const ratio = avgHr / safeMaxHr;
+
+    // Distribute each run's duration realistically across warmup/cooldown and target effort zones
+    let weights;
+    if (ratio < 0.60) {
+      // Recovery / Zone 1 dominant run
+      weights = [0.72, 0.25, 0.03, 0.00, 0.00];
+    } else if (ratio < 0.70) {
+      // Aerobic Base / Zone 2 dominant run
+      weights = [0.12, 0.78, 0.08, 0.02, 0.00];
+    } else if (ratio < 0.80) {
+      // Aerobic Tempo / Zone 3 run (with warmup in Z1/Z2 and surge in Z4)
+      weights = [0.08, 0.36, 0.44, 0.10, 0.02];
+    } else if (ratio < 0.90) {
+      // Lactate Threshold / Zone 4 session (with warmup in Z1/Z2 and peak intervals in Z4/Z5)
+      weights = [0.06, 0.24, 0.28, 0.30, 0.12];
+    } else {
+      // VO2 Max / Zone 5 race effort
+      weights = [0.05, 0.15, 0.20, 0.32, 0.28];
+    }
+
+    weights.forEach((weight, idx) => {
+      zoneSeconds[idx] += Math.round(dur * weight);
+    });
+  });
+
+  const totalSeconds = zoneSeconds.reduce((acc, s) => acc + s, 0) || 1;
+
+  // Compute integer percentages that always sum to 100%
+  const rawPcts = zoneSeconds.map(s => (s / totalSeconds) * 100);
+  const roundedPcts = rawPcts.map(p => Math.floor(p));
+  const remainder = 100 - roundedPcts.reduce((a, b) => a + b, 0);
+  const remaindersWithIdx = rawPcts
+    .map((p, i) => ({ idx: i, frac: p - roundedPcts[i] }))
+    .sort((a, b) => b.frac - a.frac);
+  for (let i = 0; i < remainder; i++) {
+    roundedPcts[remaindersWithIdx[i % 5].idx] += 1;
+  }
+
+  // Determine which zone the live heart rate falls into
+  let liveZoneNumber = 1;
+  if (safeLiveHr >= z5Min) liveZoneNumber = 5;
+  else if (safeLiveHr >= z4Min) liveZoneNumber = 4;
+  else if (safeLiveHr >= z3Min) liveZoneNumber = 3;
+  else if (safeLiveHr >= z2Min) liveZoneNumber = 2;
+
+  const zones = zonesTemplate.map((z, idx) => {
+    const secs = zoneSeconds[idx];
+    const pct = roundedPcts[idx];
+    const isLiveZone = z.zone === liveZoneNumber;
+    return {
+      ...z,
+      rangeLabel: `${z.minBpm}–${z.maxBpm} bpm`,
+      pctRangeLabel: `${z.minPct}–${z.maxPct}%`,
+      durationSeconds: secs,
+      durationFormatted: formatTime(secs),
+      percentage: pct,
+      isLiveZone
+    };
+  });
+
+  const activeZone = zones.find(z => z.isLiveZone) || zones[1];
+  const livePctOfMax = Math.min(100, Math.max(30, Math.round((safeLiveHr / safeMaxHr) * 100)));
+
+  return {
+    maxHr: safeMaxHr,
+    liveHr: safeLiveHr,
+    livePctOfMax,
+    activeZone,
+    totalDurationSeconds: totalSeconds,
+    totalDurationFormatted: formatTime(totalSeconds),
+    zones
+  };
+}
+
+export const ZONE_HEX_PALETTE = {
+  1: { fill: '#38bdf8', stroke: '#0284c7', glow: 'rgba(56, 189, 248, 0.28)' },
+  2: { fill: '#10b981', stroke: '#059669', glow: 'rgba(16, 185, 129, 0.30)' },
+  3: { fill: '#f59e0b', stroke: '#d97706', glow: 'rgba(245, 158, 11, 0.30)' },
+  4: { fill: '#f97316', stroke: '#ea580c', glow: 'rgba(249, 115, 22, 0.30)' },
+  5: { fill: '#f43f5e', stroke: '#e11d48', glow: 'rgba(244, 63, 94, 0.32)' }
+};
+
+/**
+ * Transforms calculated heart rate zone output into normalized D3.js bar chart records
+ * representing weekly workout time (in minutes and formatted duration) across Z1–Z5.
+ */
+export function buildHrZoneChartDataset(zoneData) {
+  const safeZones = Array.isArray(zoneData?.zones) ? zoneData.zones : [];
+  const items = safeZones.map((z) => {
+    const palette = ZONE_HEX_PALETTE[z.zone] || ZONE_HEX_PALETTE[2];
+    const minutes = Math.round(((Number(z.durationSeconds) || 0) / 60) * 10) / 10;
+    return {
+      zone: z.zone,
+      code: z.code,
+      name: z.name,
+      shortName: z.shortName,
+      minBpm: z.minBpm,
+      maxBpm: z.maxBpm,
+      bpmShort: `${z.minBpm}–${z.maxBpm}`,
+      rangeLabel: z.rangeLabel,
+      pctRangeLabel: z.pctRangeLabel,
+      durationSeconds: Number(z.durationSeconds) || 0,
+      minutes,
+      minutesRounded: Math.round(minutes),
+      durationFormatted: z.durationFormatted || formatTime(Number(z.durationSeconds) || 0),
+      percentage: Number(z.percentage) || 0,
+      isLiveZone: Boolean(z.isLiveZone),
+      benefit: z.benefit || '',
+      fillHex: palette.fill,
+      strokeHex: palette.stroke,
+      glowRgba: palette.glow
+    };
+  });
+
+  const maxMinutes = items.reduce((max, item) => Math.max(max, item.minutes), 0);
+  const totalMinutes = Math.round(items.reduce((sum, item) => sum + item.minutes, 0));
+
+  return {
+    maxHr: zoneData?.maxHr || 188,
+    liveHr: zoneData?.liveHr || 148,
+    totalMinutes,
+    maxMinutes: Math.max(30, maxMinutes),
+    totalDurationFormatted: zoneData?.totalDurationFormatted || formatTime((zoneData?.totalDurationSeconds) || 0),
+    items
+  };
+}
+

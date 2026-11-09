@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculatePaces, formatPace, formatTime, generate4WeekPlan } from './trainingPlan.js';
+import {
+  calculatePaces,
+  formatPace,
+  formatTime,
+  generate4WeekPlan,
+  deriveHistoricalMaxHeartRate,
+  calculateHeartRateZones,
+  getStoredMaxHrOverride,
+  setStoredMaxHrOverride,
+  buildHrZoneChartDataset
+} from './trainingPlan.js';
 import { BADGES_CONFIG, getUnlockedBadges } from './badges.js';
 import {
   SUBSCRIPTION_STATUS,
@@ -174,3 +184,68 @@ test('Theme controller persists and toggles Dark and Light mode in LocalStorage'
   setStoredTheme('light', store);
   assert.equal(getStoredTheme(store), THEME_MODES.LIGHT);
 });
+
+test('deriveHistoricalMaxHeartRate and calculateHeartRateZones compute personalized 5-zone BPM ranges from historical Max HR', () => {
+  const store = createMemoryStorage();
+
+  // 1. Baseline historical runs detect 188 bpm peak from 10K Threshold Benchmark
+  const summary = deriveHistoricalMaxHeartRate([], null);
+  assert.equal(summary.detectedMaxHr, 188);
+  assert.equal(summary.effectiveMaxHr, 188);
+  assert.equal(summary.isCustomOverride, false);
+  assert.equal(summary.totalWorkoutsAnalyzed, 6);
+
+  // 2. Compute 5 heart rate zones for 188 bpm Max HR and 148 bpm live HR
+  const zoneResult = calculateHeartRateZones(summary.effectiveMaxHr, [], 148);
+  assert.equal(zoneResult.maxHr, 188);
+  assert.equal(zoneResult.zones.length, 5);
+
+  // Verify exact BPM boundaries for 188 bpm Max HR:
+  // Z1 (50-60%): 94–112 bpm
+  // Z2 (60-70%): 113–131 bpm
+  // Z3 (70-80%): 132–149 bpm
+  // Z4 (80-90%): 150–168 bpm
+  // Z5 (90-100%): 169–188 bpm
+  assert.equal(zoneResult.zones[0].minBpm, 94);
+  assert.equal(zoneResult.zones[0].maxBpm, 112);
+  assert.equal(zoneResult.zones[1].minBpm, 113);
+  assert.equal(zoneResult.zones[1].maxBpm, 131);
+  assert.equal(zoneResult.zones[2].minBpm, 132);
+  assert.equal(zoneResult.zones[2].maxBpm, 149);
+  assert.equal(zoneResult.zones[3].minBpm, 150);
+  assert.equal(zoneResult.zones[3].maxBpm, 168);
+  assert.equal(zoneResult.zones[4].minBpm, 169);
+  assert.equal(zoneResult.zones[4].maxBpm, 188);
+
+  // Percentages across all 5 zones must sum to 100%
+  const pctSum = zoneResult.zones.reduce((sum, z) => sum + z.percentage, 0);
+  assert.equal(pctSum, 100);
+
+  // Live HR of 148 bpm should map to Zone 3 (132-149 bpm)
+  assert.equal(zoneResult.activeZone.zone, 3);
+  assert.equal(zoneResult.zones[2].isLiveZone, true);
+
+  // 3. Adding a high-intensity workout or custom override shifts all 5 zones
+  setStoredMaxHrOverride(194, store);
+  assert.equal(getStoredMaxHrOverride(store), 194);
+  const customSummary = deriveHistoricalMaxHeartRate([], getStoredMaxHrOverride(store));
+  assert.equal(customSummary.effectiveMaxHr, 194);
+  assert.equal(customSummary.isCustomOverride, true);
+
+  const customZones = calculateHeartRateZones(customSummary.effectiveMaxHr, [], 148);
+  assert.equal(customZones.zones[1].minBpm, Math.round(194 * 0.60)); // 116 bpm
+  assert.equal(customZones.zones[4].maxBpm, 194);
+
+  // 4. Verify D3.js bar chart dataset transformation
+  const d3Model = buildHrZoneChartDataset(zoneResult);
+  assert.equal(d3Model.maxHr, 188);
+  assert.equal(d3Model.totalMinutes, 222); // 3h 42m = 222 minutes
+  assert.equal(d3Model.items.length, 5);
+  assert.equal(d3Model.items[0].code, 'Z1');
+  assert.equal(d3Model.items[1].code, 'Z2');
+  assert.equal(d3Model.items[1].bpmShort, '113–131');
+  assert.ok(d3Model.items[1].minutes > d3Model.items[4].minutes, 'Zone 2 aerobic base has more weekly minutes than Zone 5 peak');
+  assert.ok(d3Model.items.every((item) => item.fillHex.startsWith('#')));
+});
+
+
