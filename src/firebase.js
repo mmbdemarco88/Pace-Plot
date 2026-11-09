@@ -52,14 +52,16 @@ export function handleFirestoreError(error, operationType, path) {
       tenantId: auth.currentUser?.tenantId || null,
       providerInfo: auth.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
+        displayName: provider.displayName,
         email: provider.email,
+        photoUrl: provider.photoURL
       })) || []
     },
     operationType,
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  return errInfo;
+  throw new Error(JSON.stringify(errInfo));
 }
 
 // Test Connection on boot
@@ -91,7 +93,9 @@ export async function loginWithGoogle() {
           createdAt: new Date().toISOString()
         }, { merge: true });
       } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, userPath);
+        try {
+          handleFirestoreError(err, OperationType.WRITE, userPath);
+        } catch (_) {}
       }
     }
     return user;
@@ -129,8 +133,11 @@ export function subscribeSavedRoutes(userId, onUpdate, onError) {
       onUpdate(items);
     },
     (err) => {
-      const errInfo = handleFirestoreError(err, OperationType.LIST, path);
-      if (onError) onError(errInfo);
+      try {
+        handleFirestoreError(err, OperationType.LIST, path);
+      } catch (structuredErr) {
+        if (onError) onError(structuredErr);
+      }
     }
   );
 }
@@ -170,7 +177,6 @@ export async function addSavedRoute(routeData) {
     return { id: docRef.id, isDuplicate: false };
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
-    throw err;
   }
 }
 
@@ -181,7 +187,6 @@ export async function deleteSavedRoute(routeId) {
     await deleteDoc(doc(db, 'savedRoutes', routeId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
-    throw err;
   }
 }
 
@@ -200,8 +205,11 @@ export function subscribeEmergencyContacts(userId, onUpdate, onError) {
       onUpdate(items);
     },
     (err) => {
-      const errInfo = handleFirestoreError(err, OperationType.LIST, path);
-      if (onError) onError(errInfo);
+      try {
+        handleFirestoreError(err, OperationType.LIST, path);
+      } catch (structuredErr) {
+        if (onError) onError(structuredErr);
+      }
     }
   );
 }
@@ -220,7 +228,6 @@ export async function addEmergencyContact(contactData) {
     return docRef.id;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
-    throw err;
   }
 }
 
@@ -231,7 +238,6 @@ export async function deleteEmergencyContact(contactId) {
     await deleteDoc(doc(db, 'emergencyContacts', contactId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
-    throw err;
   }
 }
 
@@ -250,8 +256,11 @@ export function subscribeRunActivities(userId, onUpdate, onError) {
       onUpdate(items);
     },
     (err) => {
-      const errInfo = handleFirestoreError(err, OperationType.LIST, path);
-      if (onError) onError(errInfo);
+      try {
+        handleFirestoreError(err, OperationType.LIST, path);
+      } catch (structuredErr) {
+        if (onError) onError(structuredErr);
+      }
     }
   );
 }

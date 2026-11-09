@@ -27,11 +27,16 @@ import {
   unlockBadge
 } from './badges.js';
 import {
+  SUBSCRIPTION_STATUS,
+  getSubscriptionState,
   isPremiumUser,
+  hasPremiumAccess,
+  startFreeTrial,
   setPremiumStatus,
   openUpgradeModal,
   closeUpgradeModal,
   setupPremiumListeners,
+  subscribePremiumState,
   updatePremiumUI
 } from './premium.js';
 import {
@@ -64,8 +69,24 @@ import {
   setAutoDuckOnVoice,
   setSynthAudioEnabled,
   setVoiceNavigationDucking,
-  syncPlaylistToPaceSeconds
+  syncPlaylistToPaceSeconds,
+  pausePlaybackForPaywall
 } from './spotify.js';
+import {
+  THEME_MODES,
+  getStoredTheme,
+  initThemeController
+} from './theme.js';
+
+// HTML Entity Escaping Helper (DOM XSS Defense)
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ----------------------------------------------------
 // Google Maps Quota Handling (Tier 1 & 2 Defense)
@@ -277,6 +298,7 @@ function initSafetyDisclaimer() {
   const checkSafety = document.getElementById('checkAcknowledgeSafety');
   const btnTopDisclaimer = document.getElementById('btnTopSafetyDisclaimer');
   const btnHealthDisclaimer = document.getElementById('btnHealthSafetyDisclaimer');
+  const btnSettingsDisclaimer = document.getElementById('btnSettingsSafetyDisclaimer');
 
   if (!modal) return;
 
@@ -289,6 +311,8 @@ function initSafetyDisclaimer() {
   }
 
   function openDisclaimer() {
+    const settingsModal = document.getElementById('modalAppSettings');
+    if (settingsModal) settingsModal.classList.add('hidden');
     modal.classList.remove('hidden');
   }
 
@@ -298,6 +322,7 @@ function initSafetyDisclaimer() {
 
   if (btnTopDisclaimer) btnTopDisclaimer.addEventListener('click', openDisclaimer);
   if (btnHealthDisclaimer) btnHealthDisclaimer.addEventListener('click', openDisclaimer);
+  if (btnSettingsDisclaimer) btnSettingsDisclaimer.addEventListener('click', openDisclaimer);
   if (btnClose) btnClose.addEventListener('click', closeDisclaimer);
 
   if (btnAccept) {
@@ -326,15 +351,34 @@ function initBadgesAndPremium() {
     }
   });
 
-  // Setup Premium Subscription Tiers and listeners
+  // Setup Premium Subscription Tiers, 7-Day Free Trial, and Paywall Expiration listeners
   setupPremiumListeners({
+    onTrialStarted: () => {
+      playTurnChime();
+      speakInstruction("Your 7-day Pace Plot PRO free trial has started! Spotify Running HUD, BPM Cadence Sync, and SafeGuard features are now unlocked.");
+      syncSpotifyHudAndPillUI(getSpotifyPlayerState());
+    },
+    onTrialExpired: () => {
+      pausePlaybackForPaywall();
+      syncSpotifyHudAndPillUI(getSpotifyPlayerState());
+      openUpgradeModal("Your 7-Day Free Trial has ended. Spotify Running Audio & PRO features are now locked behind the paywall.");
+      playTurnChime();
+      speakInstruction("Your 7-day free trial has expired. Spotify Running Audio is now locked. Upgrade to Pace Plot PRO to continue.");
+    },
+    onReset: () => {
+      pausePlaybackForPaywall();
+      syncSpotifyHudAndPillUI(getSpotifyPlayerState());
+      speakInstruction("Subscription reset to free tier. 7-day free trial is available again.");
+    },
     onSuccess: (tier) => {
       playTurnChime();
-      speakInstruction(`Welcome to Pace Plot PRO! Your ${tier} membership is active. All live tracking and weather radar features unlocked.`);
+      speakInstruction(`Welcome to Pace Plot PRO! Your ${tier} membership is active. Spotify Running Audio, live tracking, and weather radar unlocked.`);
+      syncSpotifyHudAndPillUI(getSpotifyPlayerState());
     },
     onRestore: () => {
       playTurnChime();
       speakInstruction("Pace Plot PRO subscription restored successfully.");
+      syncSpotifyHudAndPillUI(getSpotifyPlayerState());
     }
   });
 }
@@ -521,111 +565,34 @@ async function initGoogleMaps() {
 
   try {
     setOptions({
-      apiKey,
-      version: 'weekly',
+      key: apiKey,
+      v: 'weekly',
     });
 
     const { Map } = await importLibrary('maps');
+    const { ColorScheme } = await importLibrary('core');
     markerLib = await importLibrary('marker');
     googleMapsLib = window.google.maps;
 
-    // Dark/Night-friendly style configuration for Pace Plot
-    const mapStyles = [
-      { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-      { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
-      { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
-      {
-        featureType: 'administrative.locality',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#d59563' }]
-      },
-      {
-        featureType: 'poi',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#d59563' }]
-      },
-      {
-        featureType: 'poi.park',
-        elementType: 'geometry',
-        stylers: [{ color: '#263c3f' }]
-      },
-      {
-        featureType: 'poi.park',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#6b9a76' }]
-      },
-      {
-        featureType: 'road',
-        elementType: 'geometry',
-        stylers: [{ color: '#38414e' }]
-      },
-      {
-        featureType: 'road',
-        elementType: 'geometry.stroke',
-        stylers: [{ color: '#212a37' }]
-      },
-      {
-        featureType: 'road',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#9ca5b3' }]
-      },
-      {
-        featureType: 'road.highway',
-        elementType: 'geometry',
-        stylers: [{ color: '#746855' }]
-      },
-      {
-        featureType: 'road.highway',
-        elementType: 'geometry.stroke',
-        stylers: [{ color: '#1f2835' }]
-      },
-      {
-        featureType: 'road.highway',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#f3d19c' }]
-      },
-      {
-        featureType: 'transit',
-        elementType: 'geometry',
-        stylers: [{ color: '#2f3948' }]
-      },
-      {
-        featureType: 'transit.station',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#d59563' }]
-      },
-      {
-        featureType: 'water',
-        elementType: 'geometry',
-        stylers: [{ color: '#17263c' }]
-      },
-      {
-        featureType: 'water',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#515c6d' }]
-      },
-      {
-        featureType: 'water',
-        elementType: 'labels.text.stroke',
-        stylers: [{ color: '#17263c' }]
-      }
-    ];
-
     const initialCenter = activeRoute.center;
+    const isInitialDark = getStoredTheme() === THEME_MODES.DARK;
 
     googleMap = new Map(mapElement, {
       center: initialCenter,
       zoom: activeRoute.zoom || 15,
       mapId: 'DEMO_MAP_ID',
+      colorScheme: isInitialDark
+        ? (ColorScheme?.DARK || 'DARK')
+        : (ColorScheme?.LIGHT || 'LIGHT'),
       internalUsageAttributionIds: ['gmp_mcp_codeassist_v1_aistudio'],
       disableDefaultUI: true,
       gestureHandling: 'greedy',
-      styles: mapStyles,
       zoomControl: false,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false
     });
+    googleMap.__colorSchemeEnum = ColorScheme;
 
     // Background user location check (non-blocking)
     if (navigator.geolocation) {
@@ -1413,7 +1380,7 @@ async function saveRouteWithDeduplication(routeToSave, triggerBtn = null) {
 
   if (alreadyExists) {
     if (saveLabel) {
-      saveLabel.innerHTML = '<span class="text-amber-500 font-bold"><i class="fa-solid fa-check-double mr-1"></i>Already in Library!</span>';
+      saveLabel.innerHTML = '<span class="text-amber-500 font-bold">Saved</span>';
       setTimeout(() => updateSaveButtonStatus(), 2500);
     }
     playTurnChime();
@@ -1424,19 +1391,19 @@ async function saveRouteWithDeduplication(routeToSave, triggerBtn = null) {
 
   // 2. Server-Side Save with Deduplication
   try {
-    if (saveLabel) saveLabel.textContent = 'Saving to Cloud...';
+    if (saveLabel) saveLabel.textContent = 'Saving...';
     const result = await addSavedRoute(routeToSave);
     playTurnChime();
 
     if (result && result.isDuplicate) {
       if (saveLabel) {
-        saveLabel.innerHTML = '<span class="text-amber-500 font-bold"><i class="fa-solid fa-check mr-1"></i>Already in Library!</span>';
+        saveLabel.innerHTML = '<span class="text-amber-500 font-bold">Saved</span>';
         setTimeout(() => updateSaveButtonStatus(), 2500);
       }
       speakInstruction("Route already exists in your cloud library.");
     } else {
       if (saveLabel) {
-        saveLabel.innerHTML = '<span class="text-emerald-500 font-bold"><i class="fa-solid fa-check mr-1"></i>Saved to Cloud!</span>';
+        saveLabel.innerHTML = '<span class="text-emerald-500 font-bold">Saved!</span>';
         setTimeout(() => updateSaveButtonStatus(), 2500);
       }
       savedRoutesCache.push(routeToSave);
@@ -1447,7 +1414,7 @@ async function saveRouteWithDeduplication(routeToSave, triggerBtn = null) {
   } catch (err) {
     console.error("Error saving route:", err);
     if (saveLabel) {
-      saveLabel.textContent = 'Save Failed - Retry';
+      saveLabel.textContent = 'Retry';
       setTimeout(() => updateSaveButtonStatus(), 2500);
     }
   }
@@ -1462,9 +1429,9 @@ function updateSaveButtonStatus() {
   );
 
   if (currentIsSaved) {
-    saveLabel.innerHTML = '<span class="text-emerald-500 font-bold"><i class="fa-solid fa-bookmark mr-1"></i>Saved in Cloud</span>';
+    saveLabel.innerHTML = '<span class="text-emerald-500 font-bold">Saved</span>';
   } else {
-    saveLabel.textContent = 'Save Route to Cloud';
+    saveLabel.textContent = 'Save';
   }
 }
 
@@ -1890,11 +1857,16 @@ function setSheetCollapsed(collapsed) {
   const fullContent = document.getElementById('sheetFullContent');
   const compactContent = document.getElementById('sheetCompactBar');
   const toggleIcon = document.getElementById('sheetToggleIcon');
+  const settingsSheetStatus = document.getElementById('settingsSheetStatus');
 
   if (collapsed) {
     if (fullContent) fullContent.classList.add('hidden');
     if (compactContent) compactContent.classList.remove('hidden');
     if (toggleIcon) toggleIcon.className = 'fa-solid fa-chevron-up text-xs text-stone-400';
+    if (settingsSheetStatus) {
+      settingsSheetStatus.textContent = 'Minimized';
+      settingsSheetStatus.className = 'text-[9px] font-mono text-emerald-500 font-bold';
+    }
     if (sheet) {
       sheet.classList.remove('p-4');
       sheet.classList.add('p-3');
@@ -1903,8 +1875,12 @@ function setSheetCollapsed(collapsed) {
     if (fullContent) fullContent.classList.remove('hidden');
     if (compactContent) compactContent.classList.add('hidden');
     if (toggleIcon) toggleIcon.className = 'fa-solid fa-chevron-down text-xs text-stone-400';
+    if (settingsSheetStatus) {
+      settingsSheetStatus.textContent = 'Expanded';
+      settingsSheetStatus.className = 'text-[9px] font-mono text-stone-400';
+    }
     if (sheet) {
-      sheet.classList.add('p-4');
+      sheet.classList.add('p-3.5');
       sheet.classList.remove('p-3');
     }
   }
@@ -1922,6 +1898,37 @@ function setSheetCollapsed(collapsed) {
 // 7. UI Handlers & Interactivity
 // ----------------------------------------------------
 function setupUIHandlers() {
+  // Unified Route & Map Settings Modal (#modalAppSettings)
+  const modalAppSettings = document.getElementById('modalAppSettings');
+  const btnOpenSettingsModal = document.getElementById('btnOpenSettingsModal');
+  const btnMapOpenSettings = document.getElementById('btnMapOpenSettings');
+  const btnSheetOpenSettings = document.getElementById('btnSheetOpenSettings');
+  const btnCloseSettingsModal = document.getElementById('btnCloseSettingsModal');
+
+  function openAppSettingsModal() {
+    if (modalAppSettings) {
+      modalAppSettings.classList.remove('hidden');
+    }
+  }
+
+  function closeAppSettingsModal() {
+    if (modalAppSettings) {
+      modalAppSettings.classList.add('hidden');
+    }
+  }
+
+  [btnOpenSettingsModal, btnMapOpenSettings, btnSheetOpenSettings].forEach((btn) => {
+    if (btn) btn.addEventListener('click', openAppSettingsModal);
+  });
+  if (btnCloseSettingsModal) {
+    btnCloseSettingsModal.addEventListener('click', closeAppSettingsModal);
+  }
+  if (modalAppSettings) {
+    modalAppSettings.addEventListener('click', (e) => {
+      if (e.target === modalAppSettings) closeAppSettingsModal();
+    });
+  }
+
   // Sheet drag handle & toggle button
   const sheetDragHandle = document.getElementById('sheetDragHandle');
   const btnToggleSheet = document.getElementById('btnToggleSheet');
@@ -1931,7 +1938,7 @@ function setupUIHandlers() {
   if (btnToggleSheet) btnToggleSheet.addEventListener('click', () => setSheetCollapsed(!isSheetCollapsed));
   if (btnExpandFromCompact) btnExpandFromCompact.addEventListener('click', () => setSheetCollapsed(false));
 
-  // Toggle Detailed Drawer (Elevation Profile, Surface Filters & Pace Coach)
+  // Toggle Detailed Drawer (Elevation Profile & Turn-by-Turn Preview)
   const btnToggleDetailedDrawer = document.getElementById('btnToggleDetailedDrawer');
   const sheetExpandedDetails = document.getElementById('sheetExpandedDetails');
   const btnDrawerChevron = document.getElementById('btnDrawerChevron');
@@ -1942,14 +1949,14 @@ function setupUIHandlers() {
       const isHidden = sheetExpandedDetails.classList.contains('hidden');
       if (isHidden) {
         sheetExpandedDetails.classList.remove('hidden');
-        if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-down text-[10px] text-terracotta';
+        if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-down text-[9px] text-terracotta';
         if (btnDrawerToggleLabel) btnDrawerToggleLabel.textContent = 'Hide';
         btnToggleDetailedDrawer.classList.add('bg-terracotta/10', 'border-terracotta/30', 'text-terracotta');
-        speakInstruction("Expanded elevation profile, turn list, and terrain filters.");
+        speakInstruction("Expanded elevation profile and turn list.");
       } else {
         sheetExpandedDetails.classList.add('hidden');
-        if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-up text-[10px] text-stone-400';
-        if (btnDrawerToggleLabel) btnDrawerToggleLabel.textContent = 'Details';
+        if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-up text-[9px] text-stone-400';
+        if (btnDrawerToggleLabel) btnDrawerToggleLabel.textContent = 'Turns';
         btnToggleDetailedDrawer.classList.remove('bg-terracotta/10', 'border-terracotta/30', 'text-terracotta');
       }
     });
@@ -1958,6 +1965,7 @@ function setupUIHandlers() {
   // Voice toggle
   const audioVoiceToggleBtn = document.getElementById('audioVoiceToggle');
   const audioIcon = document.getElementById('audioIcon');
+  const settingsVoiceStatusLabel = document.getElementById('settingsVoiceStatusLabel');
   if (audioVoiceToggleBtn) {
     audioVoiceToggleBtn.addEventListener('click', () => {
       isVoiceMuted = !isVoiceMuted;
@@ -1965,9 +1973,15 @@ function setupUIHandlers() {
         if (isVoiceMuted) {
           audioIcon.className = 'fa-solid fa-volume-xmark text-rose-500';
         } else {
-          audioIcon.className = 'fa-solid fa-volume-high text-stone-700 dark:text-stone-300';
+          audioIcon.className = 'fa-solid fa-volume-high text-terracotta';
           speakInstruction("Voice navigation active");
         }
+      }
+      if (settingsVoiceStatusLabel) {
+        settingsVoiceStatusLabel.textContent = isVoiceMuted ? 'Voice Muted' : 'Voice Active';
+        settingsVoiceStatusLabel.className = isVoiceMuted
+          ? 'text-[10px] text-rose-500 font-semibold'
+          : 'text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold';
       }
     });
   }
@@ -2329,28 +2343,43 @@ function setupUIHandlers() {
 
   // Toggle Satellite View
   const btnToggleSatellite = document.getElementById('btnToggleSatellite');
+  const settingsSatelliteStatus = document.getElementById('settingsSatelliteStatus');
   if (btnToggleSatellite) {
     btnToggleSatellite.addEventListener('click', () => {
       if (!googleMap) return;
       isSatellite = !isSatellite;
       googleMap.setMapTypeId(isSatellite ? 'hybrid' : 'roadmap');
-      btnToggleSatellite.classList.toggle('text-sky-500', isSatellite);
+      btnToggleSatellite.classList.toggle('border-sky-500', isSatellite);
+      btnToggleSatellite.classList.toggle('bg-sky-500/10', isSatellite);
+      if (settingsSatelliteStatus) {
+        settingsSatelliteStatus.textContent = isSatellite ? 'Hybrid On' : 'Roadmap';
+        settingsSatelliteStatus.className = isSatellite
+          ? 'text-[9px] font-mono text-sky-400 font-bold'
+          : 'text-[9px] font-mono text-stone-400';
+      }
     });
   }
 
   // Toggle Safety Heatmap Glow
   const heatmapBtn = document.getElementById('btnToggleSafetyHeatmap');
+  const settingsHeatmapStatus = document.getElementById('settingsHeatmapStatus');
   if (heatmapBtn) {
     heatmapBtn.addEventListener('click', () => {
       isHeatmapActive = !isHeatmapActive;
       if (routeGlowPolyline) {
         routeGlowPolyline.setOptions({ strokeOpacity: isHeatmapActive ? 0.35 : 0.05 });
       }
-      heatmapBtn.classList.toggle('opacity-50', !isHeatmapActive);
+      heatmapBtn.classList.toggle('opacity-60', !isHeatmapActive);
+      if (settingsHeatmapStatus) {
+        settingsHeatmapStatus.textContent = isHeatmapActive ? 'Active' : 'Hidden';
+        settingsHeatmapStatus.className = isHeatmapActive
+          ? 'text-[9px] font-mono text-emerald-500 font-bold'
+          : 'text-[9px] font-mono text-stone-400';
+      }
     });
   }
 
-  // Expand Map Fullscreen button on map overlay
+  // Expand Map Fullscreen button inside Settings modal
   const btnMaximizeMap = document.getElementById('btnMaximizeMap');
   if (btnMaximizeMap) {
     btnMaximizeMap.addEventListener('click', () => {
@@ -2522,24 +2551,25 @@ function setupUIHandlers() {
     });
   }
 
-  // Theme Toggle (Dark / Light)
-  const themeBtn = document.getElementById('toggleTheme');
-  const themeIcon = document.getElementById('themeIcon');
-  let isDark = true;
-  document.documentElement.classList.add('dark');
-
-  if (themeBtn && themeIcon) {
-    themeBtn.addEventListener('click', () => {
-      isDark = !isDark;
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        themeIcon.className = 'fa-solid fa-moon';
-      } else {
-        document.documentElement.classList.remove('dark');
-        themeIcon.className = 'fa-solid fa-sun';
-      }
-    });
+  // Persistent Theme Toggle (Dark / Light stored in LocalStorage)
+  const settingsThemeStatusLabel = document.getElementById('settingsThemeStatusLabel');
+  function updateSettingsThemeStatusLabel(theme) {
+    if (settingsThemeStatusLabel) {
+      settingsThemeStatusLabel.textContent = theme === THEME_MODES.DARK
+        ? 'Dark Mode · Saved in LocalStorage'
+        : 'Light Mode · Saved in LocalStorage';
+    }
   }
+  updateSettingsThemeStatusLabel(getStoredTheme());
+
+  initThemeController((theme) => {
+    updateSettingsThemeStatusLabel(theme);
+    const mapEl = document.getElementById('map');
+    if (mapEl && googleMap) {
+      // Never set 'styles' when mapId is present (causes Google Maps JS API warning)
+      mapEl.style.filter = '';
+    }
+  });
 
   // Health Connect toggle
   const btnToggleHealthConnect = document.getElementById('btnToggleHealthConnect');
@@ -2691,8 +2721,8 @@ function setupLocationSearch() {
         item.innerHTML = `
           <i class="fa-solid fa-location-dot text-terracotta text-xs flex-shrink-0"></i>
           <div class="truncate flex-1">
-            <div class="font-bold text-stone-900 dark:text-white truncate">${name}</div>
-            <div class="text-[10px] text-stone-500 truncate">${sub}</div>
+            <div class="font-bold text-stone-900 dark:text-white truncate">${escapeHtml(name)}</div>
+            <div class="text-[10px] text-stone-500 truncate">${escapeHtml(sub)}</div>
           </div>
         `;
 
@@ -2819,11 +2849,11 @@ function setupSafeGuardHandlers() {
         newCard.innerHTML = `
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 font-bold text-xs flex items-center justify-center">
-              ${name.slice(0, 2).toUpperCase()}
+              ${escapeHtml(name.slice(0, 2).toUpperCase())}
             </div>
             <div>
-              <h4 class="text-xs font-bold text-stone-900 dark:text-white">${name}</h4>
-              <p class="text-[10px] text-stone-500">${phone} • Live Link Recipient</p>
+              <h4 class="text-xs font-bold text-stone-900 dark:text-white">${escapeHtml(name)}</h4>
+              <p class="text-[10px] text-stone-500">${escapeHtml(phone)} • Live Link Recipient</p>
             </div>
           </div>
           <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">Added</span>
@@ -3083,17 +3113,17 @@ function renderCloudRoutes(routesList) {
     card.innerHTML = `
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5">
-          <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">${r.safetyScore || '9.8'} Safety Score</span>
+          <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">${escapeHtml(r.safetyScore || '9.8')} Safety Score</span>
           <span class="text-[9px] px-1.5 py-0.2 rounded bg-terracotta/10 text-terracotta font-semibold">Cloud</span>
         </div>
-        <h4 class="text-xs font-bold text-stone-900 dark:text-white truncate mt-0.5">${r.title}</h4>
-        <p class="text-[10px] text-stone-500 truncate">${r.distance} mi • ${r.locationName || 'Mapped Loop'} • ${r.elevation || '+40 ft'}</p>
+        <h4 class="text-xs font-bold text-stone-900 dark:text-white truncate mt-0.5">${escapeHtml(r.title)}</h4>
+        <p class="text-[10px] text-stone-500 truncate">${escapeHtml(r.distance)} mi • ${escapeHtml(r.locationName || 'Mapped Loop')} • ${escapeHtml(r.elevation || '+40 ft')}</p>
       </div>
       <div class="flex items-center gap-1 flex-shrink-0">
-        <button class="btn-load-cloud-route px-2.5 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1" data-route-id="${r.id}">
+        <button class="btn-load-cloud-route px-2.5 py-1.5 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-200 hover:bg-terracotta hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-1" data-route-id="${escapeHtml(r.id)}">
           <i class="fa-solid fa-play text-[9px]"></i> Load
         </button>
-        <button class="btn-delete-cloud-route w-7 h-7 bg-stone-100 dark:bg-stone-700 hover:bg-rose-500 hover:text-white text-stone-500 dark:text-stone-400 rounded-xl text-xs flex items-center justify-center transition" title="Delete from Cloud" data-route-id="${r.id}">
+        <button class="btn-delete-cloud-route w-7 h-7 bg-stone-100 dark:bg-stone-700 hover:bg-rose-500 hover:text-white text-stone-500 dark:text-stone-400 rounded-xl text-xs flex items-center justify-center transition" title="Delete from Cloud" data-route-id="${escapeHtml(r.id)}">
           <i class="fa-solid fa-trash-can text-[10px]"></i>
         </button>
       </div>
@@ -3172,18 +3202,18 @@ function renderCloudContacts(contactsList) {
     card.innerHTML = `
       <div class="flex items-center gap-2.5 min-w-0">
         <div class="w-8 h-8 rounded-full ${idx === 0 ? 'bg-terracotta/10 text-terracotta' : 'bg-blue-500/10 text-blue-500'} font-bold text-xs flex items-center justify-center flex-shrink-0">
-          ${(c.name || 'EC').slice(0, 2).toUpperCase()}
+          ${escapeHtml((c.name || 'EC').slice(0, 2).toUpperCase())}
         </div>
         <div class="truncate">
-          <h4 class="text-xs font-bold text-stone-900 dark:text-white truncate">${c.name}</h4>
-          <p class="text-[10px] text-stone-500 truncate">${c.phone} • ${c.role || 'Live Beacon Recipient'}</p>
+          <h4 class="text-xs font-bold text-stone-900 dark:text-white truncate">${escapeHtml(c.name)}</h4>
+          <p class="text-[10px] text-stone-500 truncate">${escapeHtml(c.phone)} • ${escapeHtml(c.role || 'Live Beacon Recipient')}</p>
         </div>
       </div>
       <div class="flex items-center gap-1.5 flex-shrink-0">
         <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${idx === 0 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400' : 'bg-stone-100 dark:bg-stone-600 text-stone-600 dark:text-stone-300'}">
           ${idx === 0 ? 'Primary' : 'Backup'}
         </span>
-        <button class="btn-delete-contact w-6 h-6 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-stone-200 dark:hover:bg-stone-600 flex items-center justify-center transition" title="Delete Contact" data-contact-id="${c.id}">
+        <button class="btn-delete-contact w-6 h-6 rounded-lg text-stone-400 hover:text-rose-500 hover:bg-stone-200 dark:hover:bg-stone-600 flex items-center justify-center transition" title="Delete Contact" data-contact-id="${escapeHtml(c.id)}">
           <i class="fa-solid fa-trash-can text-[10px]"></i>
         </button>
       </div>
@@ -3239,12 +3269,12 @@ function renderCloudWorkouts(workoutsList) {
 
     card.innerHTML = `
       <div class="min-w-0 flex-1">
-        <h4 class="text-xs font-bold text-stone-900 dark:text-white truncate">${w.routeTitle || 'Safe Pace Stride'}</h4>
-        <p class="text-[10px] text-stone-500 truncate">${w.distance} mi • ${timeFormatted} • ${w.avgPace || "8'42\""}/mi • ${w.calories || 280} kcal</p>
+        <h4 class="text-xs font-bold text-stone-900 dark:text-white truncate">${escapeHtml(w.routeTitle || 'Safe Pace Stride')}</h4>
+        <p class="text-[10px] text-stone-500 truncate">${escapeHtml(w.distance)} mi • ${escapeHtml(timeFormatted)} • ${escapeHtml(w.avgPace || "8'42\"")}/mi • ${escapeHtml(w.calories || 280)} kcal</p>
       </div>
       <div class="text-right flex-shrink-0 ml-2">
         <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block">Completed</span>
-        <span class="text-[9px] text-stone-400">${dateFormatted}</span>
+        <span class="text-[9px] text-stone-400">${escapeHtml(dateFormatted)}</span>
       </div>
     `;
 
@@ -3253,8 +3283,26 @@ function renderCloudWorkouts(workoutsList) {
 }
 
 // ----------------------------------------------------
-// 11. Spotify Navigation HUD Mini-Player & Playlist Drawer UI
+// 11. Spotify Navigation HUD Mini-Player & Playlist Drawer UI (PRO GATED)
 // ----------------------------------------------------
+function requireSpotifyPremiumAccess(actionLabel = 'control Spotify Running Audio') {
+  const sub = getSubscriptionState();
+  if (sub.hasAccess) {
+    return true;
+  }
+
+  pausePlaybackForPaywall();
+
+  const paywallMessage = sub.status === SUBSCRIPTION_STATUS.TRIAL_EXPIRED
+    ? `Your 7-Day Free Trial has expired. Upgrade to Pace Plot PRO to ${actionLabel}.`
+    : `Spotify Running Audio is a Pace Plot PRO feature. Start your 7-Day Free Trial or upgrade to PRO to ${actionLabel}.`;
+
+  openUpgradeModal(paywallMessage);
+  playTurnChime();
+  speakInstruction(paywallMessage);
+  return false;
+}
+
 function initSpotifyMiniPlayerUI() {
   initSpotifyController((state) => {
     playTurnChime();
@@ -3269,6 +3317,9 @@ function initSpotifyMiniPlayerUI() {
   const btnHudSpotifyExpand = document.getElementById('btnHudSpotifyExpand');
   const btnHudSpotifyPlaylists = document.getElementById('btnHudSpotifyPlaylists');
   const btnHudSpotifyConnectStatus = document.getElementById('btnHudSpotifyConnectStatus');
+  const btnHudUnlockSpotifyPro = document.getElementById('btnHudUnlockSpotifyPro');
+  const btnSpotifyGateStartTrial = document.getElementById('btnSpotifyGateStartTrial');
+  const btnSpotifyGateOpenPaywall = document.getElementById('btnSpotifyGateOpenPaywall');
 
   const btnHudPlayPause = document.getElementById('btnHudSpotifyPlayPause');
   const btnHudPrev = document.getElementById('btnHudSpotifyPrev');
@@ -3301,8 +3352,11 @@ function initSpotifyMiniPlayerUI() {
   }
 
   function openSpotifyModal() {
+    const settingsModal = document.getElementById('modalAppSettings');
+    if (settingsModal) settingsModal.classList.add('hidden');
     if (modal) {
       modal.classList.remove('hidden');
+      syncSpotifyHudAndPillUI(getSpotifyPlayerState());
       renderSpotifyModalLists(getSpotifyPlayerState());
     }
   }
@@ -3324,6 +3378,36 @@ function initSpotifyMiniPlayerUI() {
     if (btn) btn.addEventListener('click', openSpotifyModal);
   });
 
+  if (btnHudUnlockSpotifyPro) {
+    btnHudUnlockSpotifyPro.addEventListener('click', (e) => {
+      e.stopPropagation();
+      requireSpotifyPremiumAccess('unlock the Spotify Navigation HUD Mini-Player');
+    });
+  }
+
+  if (btnSpotifyGateStartTrial) {
+    btnSpotifyGateStartTrial.addEventListener('click', () => {
+      const sub = getSubscriptionState();
+      if (sub.status === SUBSCRIPTION_STATUS.FREE) {
+        startFreeTrial();
+        playTurnChime();
+        speakInstruction('7-Day Free Trial started! Spotify Running Audio and HUD controls are now unlocked.');
+        syncSpotifyHudAndPillUI(getSpotifyPlayerState());
+        renderSpotifyModalLists(getSpotifyPlayerState());
+      } else {
+        closeSpotifyModal();
+        openUpgradeModal('Your Free Trial has ended. Subscribe to Pace Plot PRO to unlock Spotify Running Audio.');
+      }
+    });
+  }
+
+  if (btnSpotifyGateOpenPaywall) {
+    btnSpotifyGateOpenPaywall.addEventListener('click', () => {
+      closeSpotifyModal();
+      openUpgradeModal('Upgrade to Pace Plot PRO or start your 7-Day Free Trial to unlock Spotify Running Audio.');
+    });
+  }
+
   if (btnCloseModal) btnCloseModal.addEventListener('click', closeSpotifyModal);
   if (modal) {
     modal.addEventListener('click', (e) => {
@@ -3331,40 +3415,46 @@ function initSpotifyMiniPlayerUI() {
     });
   }
 
-  // Transport controls (HUD & Map Floating Pill)
+  // Transport controls (HUD & Map Floating Pill) - Gated by Pace Plot PRO / Active Free Trial
   if (btnHudPlayPause) {
     btnHudPlayPause.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!requireSpotifyPremiumAccess('play Spotify running playlists')) return;
       togglePlayPause();
     });
   }
   if (btnMapPlayPause) {
     btnMapPlayPause.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!requireSpotifyPremiumAccess('play Spotify running playlists')) return;
       togglePlayPause();
     });
   }
   if (btnHudPrev) {
     btnHudPrev.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!requireSpotifyPremiumAccess('skip tracks in the HUD mini-player')) return;
       skipPreviousTrack();
     });
   }
   if (btnHudNext) {
     btnHudNext.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!requireSpotifyPremiumAccess('skip tracks in the HUD mini-player')) return;
       skipNextTrack();
     });
   }
   if (btnMapNext) {
     btnMapNext.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!requireSpotifyPremiumAccess('skip tracks on the map mini-player')) return;
       skipNextTrack();
     });
   }
   if (btnHudShuffle) {
     btnHudShuffle.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!requireSpotifyPremiumAccess('toggle shuffle mode')) return;
       toggleShuffleState();
     });
   }
@@ -3372,6 +3462,7 @@ function initSpotifyMiniPlayerUI() {
   // Scrubbing progress bar inside HUD
   if (hudProgressTrack) {
     hudProgressTrack.addEventListener('click', (e) => {
+      if (!requireSpotifyPremiumAccess('seek tracks in the HUD mini-player')) return;
       const rect = hudProgressTrack.getBoundingClientRect();
       if (!rect.width) return;
       const pct = ((e.clientX - rect.left) / rect.width) * 100;
@@ -3382,6 +3473,7 @@ function initSpotifyMiniPlayerUI() {
   // Spotify OAuth Connect / Disconnect Button
   if (btnOAuthConnect) {
     btnOAuthConnect.addEventListener('click', async () => {
+      if (!requireSpotifyPremiumAccess('connect your Spotify account')) return;
       const currentState = getSpotifyPlayerState();
       if (currentState.connected) {
         disconnectSpotifyAccount();
@@ -3415,12 +3507,14 @@ function initSpotifyMiniPlayerUI() {
 
   if (btnToggleConfigForm && configForm) {
     btnToggleConfigForm.addEventListener('click', () => {
+      if (!requireSpotifyPremiumAccess('configure Spotify API settings')) return;
       configForm.classList.toggle('hidden');
     });
   }
 
   if (btnSaveConfig) {
     btnSaveConfig.addEventListener('click', async () => {
+      if (!requireSpotifyPremiumAccess('connect your Spotify API token')) return;
       const cid = inputClientId ? inputClientId.value.trim() : '';
       const tok = inputDirectToken ? inputDirectToken.value.trim() : '';
       setCustomSpotifyClientId(cid);
@@ -3445,6 +3539,7 @@ function initSpotifyMiniPlayerUI() {
   // Volume & Ducking controls
   if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
+      if (!hasPremiumAccess()) return;
       const val = Number(e.target.value);
       if (volumeValue) volumeValue.textContent = `${val}%`;
       setPlayerVolume(val);
@@ -3470,13 +3565,29 @@ function initSpotifyMiniPlayerUI() {
       renderSpotifyModalLists(state);
     }
   });
+
+  // Also subscribe to Premium/Trial state changes so lock overlays update live
+  subscribePremiumState((subState) => {
+    if (!subState.hasAccess) {
+      pausePlaybackForPaywall();
+    }
+    syncSpotifyHudAndPillUI(getSpotifyPlayerState());
+    if (modal && !modal.classList.contains('hidden')) {
+      renderSpotifyModalLists(getSpotifyPlayerState());
+    }
+  });
 }
 
 function syncSpotifyHudAndPillUI(state) {
   const track = state.track || {};
   const pl = state.playlist || {};
+  const sub = getSubscriptionState();
+  const unlocked = sub.hasAccess;
 
-  // 1. Update Navigation HUD Mini-Player
+  // 1. Update Navigation HUD Mini-Player & PRO Lock Banner
+  const hudLockOverlay = document.getElementById('hudSpotifyLockOverlay');
+  const hudLockText = document.getElementById('hudSpotifyLockText');
+  const btnHudUnlockPro = document.getElementById('btnHudUnlockSpotifyPro');
   const hudPlaylistName = document.getElementById('hudSpotifyPlaylistName');
   const hudBpmTag = document.getElementById('hudSpotifyBpmTag');
   const hudDuckedBadge = document.getElementById('hudSpotifyDuckedBadge');
@@ -3492,6 +3603,22 @@ function syncSpotifyHudAndPillUI(state) {
   const hudArtworkImg = document.getElementById('hudSpotifyArtworkImg');
   const hudBrandIcon = document.getElementById('hudSpotifyBrandIcon');
 
+  if (hudLockOverlay) {
+    hudLockOverlay.classList.toggle('hidden', unlocked);
+  }
+  if (!unlocked) {
+    if (hudLockText) {
+      hudLockText.textContent = sub.status === SUBSCRIPTION_STATUS.TRIAL_EXPIRED
+        ? 'Trial Expired · Upgrade to PRO to Unlock Spotify HUD'
+        : 'PRO Feature · Start 7-Day Free Trial to Unlock Spotify HUD';
+    }
+    if (btnHudUnlockPro) {
+      btnHudUnlockPro.textContent = sub.status === SUBSCRIPTION_STATUS.TRIAL_EXPIRED
+        ? 'Upgrade PRO'
+        : 'Unlock Free Trial';
+    }
+  }
+
   if (hudPlaylistName) hudPlaylistName.textContent = pl.name || 'Running Playlist';
   if (hudBpmTag) hudBpmTag.textContent = `${track.bpm || 170} BPM`;
   if (hudDuckedBadge) {
@@ -3500,14 +3627,18 @@ function syncSpotifyHudAndPillUI(state) {
   if (hudTrackTitle) hudTrackTitle.textContent = track.title || 'Select Track';
   if (hudTrackArtist) hudTrackArtist.textContent = track.artist || 'Spotify Running';
   if (hudPlayIcon) {
-    hudPlayIcon.className = state.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+    if (!unlocked) {
+      hudPlayIcon.className = 'fa-solid fa-lock';
+    } else {
+      hudPlayIcon.className = state.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+    }
   }
   if (hudShuffleBtn) {
-    hudShuffleBtn.classList.toggle('text-[#1DB954]', state.isShuffle);
-    hudShuffleBtn.classList.toggle('text-stone-400', !state.isShuffle);
+    hudShuffleBtn.classList.toggle('text-[#1DB954]', unlocked && state.isShuffle);
+    hudShuffleBtn.classList.toggle('text-stone-400', !unlocked || !state.isShuffle);
   }
   if (hudEqOverlay) {
-    hudEqOverlay.classList.toggle('eq-playing', state.isPlaying);
+    hudEqOverlay.classList.toggle('eq-playing', unlocked && state.isPlaying);
   }
 
   const artUrl = track.artworkUrl || pl.coverImage || '';
@@ -3527,23 +3658,78 @@ function syncSpotifyHudAndPillUI(state) {
   if (hudTimeCurrent) hudTimeCurrent.textContent = formatTrackTime(state.progressMs);
   if (hudTimeTotal) hudTimeTotal.textContent = formatTrackTime(state.durationMs);
   if (hudConnectStatus) {
-    hudConnectStatus.textContent = state.connected ? 'Spotify Connected' : 'Connect API';
+    if (!unlocked) {
+      hudConnectStatus.textContent = sub.status === SUBSCRIPTION_STATUS.TRIAL_EXPIRED ? 'PRO Locked' : 'Start Free Trial';
+    } else if (sub.status === SUBSCRIPTION_STATUS.TRIAL_ACTIVE) {
+      hudConnectStatus.textContent = state.connected ? 'Spotify Connected' : `Trial · ${sub.remainingText.split(' ')[0]}`;
+    } else {
+      hudConnectStatus.textContent = state.connected ? 'Spotify Connected' : 'Connect API';
+    }
   }
 
   // 2. Update Map Floating Spotify Pill
   const mapTrackTitle = document.getElementById('mapSpotifyTrackTitle');
   const mapSubLabel = document.getElementById('mapSpotifySubLabel');
   const mapPlayIcon = document.getElementById('mapSpotifyPlayIcon');
+  const mapProLockBadge = document.getElementById('mapSpotifyProLockBadge');
 
   if (mapTrackTitle) mapTrackTitle.textContent = track.title || 'Running Playlist';
+  if (mapProLockBadge) {
+    if (unlocked) {
+      mapProLockBadge.className = 'px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[8px] font-black uppercase shrink-0 flex items-center gap-0.5';
+      mapProLockBadge.innerHTML = sub.status === SUBSCRIPTION_STATUS.TRIAL_ACTIVE
+        ? '<i class="fa-solid fa-hourglass-half text-[7px]"></i> TRIAL'
+        : '<i class="fa-solid fa-crown text-[7px]"></i> PRO';
+    } else {
+      mapProLockBadge.className = 'px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[8px] font-black uppercase shrink-0 flex items-center gap-0.5';
+      mapProLockBadge.innerHTML = '<i class="fa-solid fa-lock text-[7px]"></i> PRO';
+    }
+  }
   if (mapSubLabel) {
-    mapSubLabel.textContent = `${track.bpm || 170} BPM · ${state.isPlaying ? formatTrackTime(state.progressMs) : 'Paused'}`;
+    if (!unlocked) {
+      mapSubLabel.textContent = sub.status === SUBSCRIPTION_STATUS.TRIAL_EXPIRED
+        ? 'Trial Ended · Locked'
+        : `${track.bpm || 170} BPM · Free Trial`;
+    } else {
+      mapSubLabel.textContent = `${track.bpm || 170} BPM · ${state.isPlaying ? formatTrackTime(state.progressMs) : 'Ready'}`;
+    }
   }
   if (mapPlayIcon) {
-    mapPlayIcon.className = state.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+    if (!unlocked) {
+      mapPlayIcon.className = 'fa-solid fa-lock';
+    } else {
+      mapPlayIcon.className = state.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+    }
   }
 
-  // 3. Update Modal Header & Account Status
+  // 3. Update Modal Header, PRO Gate Banner & Account Status
+  const modalGateBanner = document.getElementById('spotifyModalProGateBanner');
+  const modalGateHeadline = document.getElementById('spotifyModalGateHeadline');
+  const modalGateBadge = document.getElementById('spotifyModalGateBadge');
+  const modalGateDesc = document.getElementById('spotifyModalGateDesc');
+  const btnGateStartTrial = document.getElementById('btnSpotifyGateStartTrial');
+
+  if (modalGateBanner) {
+    modalGateBanner.classList.toggle('hidden', unlocked);
+  }
+  if (!unlocked) {
+    if (sub.status === SUBSCRIPTION_STATUS.TRIAL_EXPIRED) {
+      if (modalGateHeadline) modalGateHeadline.textContent = 'Free Trial Expired · Locked in Paywall';
+      if (modalGateBadge) modalGateBadge.textContent = 'Paywall Active';
+      if (modalGateDesc) {
+        modalGateDesc.textContent = 'Your 7-day free trial has ended. Upgrade to Pace Plot PRO to unlock Spotify Running Audio and HUD controls.';
+      }
+      if (btnGateStartTrial) btnGateStartTrial.classList.add('hidden');
+    } else {
+      if (modalGateHeadline) modalGateHeadline.textContent = 'Locked Under Pace Plot PRO';
+      if (modalGateBadge) modalGateBadge.textContent = '7-Day Free Trial';
+      if (modalGateDesc) {
+        modalGateDesc.textContent = 'Start your 7-day free trial or upgrade to Pace Plot PRO to unlock Spotify Web API connection, live HUD playback controls, and BPM cadence matching.';
+      }
+      if (btnGateStartTrial) btnGateStartTrial.classList.remove('hidden');
+    }
+  }
+
   const modalStatusText = document.getElementById('spotifyModalStatusText');
   const accountTitle = document.getElementById('spotifyAccountTitle');
   const accountSub = document.getElementById('spotifyAccountSub');
@@ -3551,9 +3737,9 @@ function syncSpotifyHudAndPillUI(state) {
   const activeBpmReadout = document.getElementById('spotifyActiveBpmReadout');
 
   if (modalStatusText) {
-    modalStatusText.textContent = state.connected
-      ? `· ${state.deviceName}`
-      : '· Cadence Synth';
+    modalStatusText.textContent = !unlocked
+      ? '· PRO Locked'
+      : (state.connected ? `· ${state.deviceName}` : '· Cadence Synth');
   }
   if (accountTitle) {
     accountTitle.textContent = state.connected
@@ -3566,7 +3752,9 @@ function syncSpotifyHudAndPillUI(state) {
       : 'Connect your Spotify account to sync personal playlists & active devices';
   }
   if (oauthLabel) {
-    oauthLabel.textContent = state.connected ? 'Disconnect' : 'Connect Spotify';
+    oauthLabel.textContent = !unlocked
+      ? 'Unlock PRO'
+      : (state.connected ? 'Disconnect' : 'Connect Spotify');
   }
   if (activeBpmReadout) {
     activeBpmReadout.textContent = pl.bpmRange || `${track.bpm || 170} BPM`;
@@ -3576,6 +3764,7 @@ function syncSpotifyHudAndPillUI(state) {
 function renderSpotifyModalLists(state) {
   const playlistsGrid = document.getElementById('spotifyPlaylistsGrid');
   const tracksList = document.getElementById('spotifyTracksList');
+  const unlocked = hasPremiumAccess();
 
   if (playlistsGrid) {
     playlistsGrid.innerHTML = '';
@@ -3591,20 +3780,21 @@ function renderSpotifyModalLists(state) {
 
       btn.innerHTML = `
         <div class="flex items-center gap-2.5 min-w-0 flex-1">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br ${pl.coverGradient || 'from-emerald-500 to-stone-900'} flex items-center justify-center text-white text-sm shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br ${escapeHtml(pl.coverGradient || 'from-emerald-500 to-stone-900')} flex items-center justify-center text-white text-sm shrink-0">
             <i class="fa-brands fa-spotify"></i>
           </div>
           <div class="min-w-0 flex-1">
-            <div class="text-xs font-extrabold text-white truncate">${pl.name}</div>
-            <div class="text-[10px] text-stone-400 truncate">${pl.subtitle || ''} · <span class="font-mono text-[#1DB954]">${pl.bpmRange || '170 BPM'}</span></div>
+            <div class="text-xs font-extrabold text-white truncate">${escapeHtml(pl.name)}</div>
+            <div class="text-[10px] text-stone-400 truncate">${escapeHtml(pl.subtitle || '')} · <span class="font-mono text-[#1DB954]">${escapeHtml(pl.bpmRange || '170 BPM')}</span></div>
           </div>
         </div>
-        <div class="text-[10px] font-mono font-bold ${isSelected ? 'text-[#1DB954]' : 'text-stone-400'} shrink-0">
-          ${isSelected ? (state.isPlaying ? 'Playing' : 'Active') : 'Load'}
+        <div class="text-[10px] font-mono font-bold ${isSelected ? 'text-[#1DB954]' : 'text-stone-400'} shrink-0 flex items-center gap-1">
+          ${!unlocked ? '<i class="fa-solid fa-lock text-amber-400 text-[9px]"></i> <span>PRO</span>' : (isSelected ? (state.isPlaying ? 'Playing' : 'Active') : 'Load')}
         </div>
       `;
 
       btn.addEventListener('click', () => {
+        if (!requireSpotifyPremiumAccess('switch running playlists')) return;
         selectPlaylistByIndex(idx, true);
       });
 
@@ -3627,20 +3817,21 @@ function renderSpotifyModalLists(state) {
       row.innerHTML = `
         <div class="flex items-center gap-2 min-w-0 flex-1">
           <span class="w-5 text-center font-mono text-[10px] ${isCurrent ? 'text-[#1DB954] font-bold' : 'text-stone-500'}">
-            ${isCurrent && state.isPlaying ? '<i class="fa-solid fa-volume-high"></i>' : tIdx + 1}
+            ${!unlocked ? '<i class="fa-solid fa-lock text-amber-400 text-[9px]"></i>' : (isCurrent && state.isPlaying ? '<i class="fa-solid fa-volume-high"></i>' : tIdx + 1)}
           </span>
           <div class="min-w-0 flex-1">
-            <div class="text-xs font-bold ${isCurrent ? 'text-[#1DB954]' : 'text-white'} truncate">${trk.title}</div>
-            <div class="text-[10px] text-stone-400 truncate">${trk.artist}</div>
+            <div class="text-xs font-bold ${isCurrent ? 'text-[#1DB954]' : 'text-white'} truncate">${escapeHtml(trk.title)}</div>
+            <div class="text-[10px] text-stone-400 truncate">${escapeHtml(trk.artist)}</div>
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0 font-mono tabular-nums text-[10px]">
-          <span class="text-amber-400 font-bold">${trk.bpm || 170} BPM</span>
-          <span class="text-stone-400">${formatTrackTime(trk.durationMs)}</span>
+          <span class="text-amber-400 font-bold">${escapeHtml(trk.bpm || 170)} BPM</span>
+          <span class="text-stone-400">${escapeHtml(formatTrackTime(trk.durationMs))}</span>
         </div>
       `;
 
       row.addEventListener('click', () => {
+        if (!requireSpotifyPremiumAccess('play tracks from running playlists')) return;
         selectTrackByIndex(tIdx);
       });
 
@@ -3648,5 +3839,6 @@ function renderSpotifyModalLists(state) {
     });
   }
 }
+
 
 

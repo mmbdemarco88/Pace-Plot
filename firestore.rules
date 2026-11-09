@@ -2,13 +2,13 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Global Safety Net: Default Deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
+    // Core Auth & ID Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -18,33 +18,96 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // User Profiles: private to the owner
+    function isValidOptionalString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // Schema Validators
+    function isValidUserProfile(data) {
+      let allowedKeys = ['displayName', 'email', 'photoURL', 'subscriptionStatus', 'tier', 'trialStartedAt', 'trialExpiresAt', 'createdAt'];
+      return data.keys().hasAll(['email'])
+        && data.keys().hasOnly(allowedKeys)
+        && data.email is string && data.email.size() <= 150
+        && isValidOptionalString(data, 'displayName', 100)
+        && isValidOptionalString(data, 'photoURL', 500)
+        && isValidOptionalString(data, 'subscriptionStatus', 30)
+        && isValidOptionalString(data, 'tier', 20)
+        && isValidOptionalString(data, 'createdAt', 64)
+        && (!('trialStartedAt' in data) || data.trialStartedAt is number)
+        && (!('trialExpiresAt' in data) || data.trialExpiresAt is number);
+    }
+
+    function isValidSavedRoute(data) {
+      let allowedKeys = ['userId', 'title', 'distance', 'safetyScore', 'locationName', 'elevation', 'pathCoordinates', 'createdAt'];
+      return data.keys().hasAll(['userId', 'title', 'distance'])
+        && data.keys().hasOnly(allowedKeys)
+        && data.userId == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && data.distance is number && data.distance >= 0 && data.distance <= 500
+        && isValidOptionalString(data, 'safetyScore', 10)
+        && isValidOptionalString(data, 'locationName', 150)
+        && isValidOptionalString(data, 'elevation', 50)
+        && isValidOptionalString(data, 'createdAt', 64)
+        && (!('pathCoordinates' in data) || (data.pathCoordinates is list && data.pathCoordinates.size() <= 200));
+    }
+
+    function isValidEmergencyContact(data) {
+      let allowedKeys = ['userId', 'name', 'phone', 'role', 'createdAt'];
+      return data.keys().hasAll(['userId', 'name', 'phone'])
+        && data.keys().hasOnly(allowedKeys)
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 30
+        && isValidOptionalString(data, 'role', 20)
+        && isValidOptionalString(data, 'createdAt', 64);
+    }
+
+    function isValidRunActivity(data) {
+      let allowedKeys = ['userId', 'routeTitle', 'distance', 'durationSeconds', 'avgPace', 'avgHeartRate', 'calories', 'completedAt'];
+      return data.keys().hasAll(['userId', 'distance', 'durationSeconds'])
+        && data.keys().hasOnly(allowedKeys)
+        && data.userId == request.auth.uid
+        && data.distance is number && data.distance >= 0 && data.distance <= 500
+        && data.durationSeconds is number && data.durationSeconds >= 0 && data.durationSeconds <= 864000
+        && isValidOptionalString(data, 'routeTitle', 150)
+        && isValidOptionalString(data, 'avgPace', 20)
+        && isValidOptionalString(data, 'completedAt', 64)
+        && (!('avgHeartRate' in data) || (data.avgHeartRate is number && data.avgHeartRate >= 0 && data.avgHeartRate <= 300))
+        && (!('calories' in data) || (data.calories is number && data.calories >= 0 && data.calories <= 50000));
+    }
+
+    // User Profiles: private to the owner with strict schema validation
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create, update: if isValidId(userId) && isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow delete: if isOwner(userId);
     }
 
-    // Saved Routes: private to the user
+    // Saved Routes: private to the user (allow read without isValidId so collection list queries with where('userId','==',uid) succeed)
     match /savedRoutes/{routeId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(routeId) && isSignedIn() && isValidSavedRoute(request.resource.data);
+      allow update: if isValidId(routeId) && isSignedIn() && resource.data.userId == request.auth.uid && isValidSavedRoute(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // Emergency Contacts: private to the user
     match /emergencyContacts/{contactId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(contactId) && isSignedIn() && isValidEmergencyContact(request.resource.data);
+      allow update: if isValidId(contactId) && isSignedIn() && resource.data.userId == request.auth.uid && isValidEmergencyContact(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     // Run Workout Activities: private to the user
     match /runActivities/{activityId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(activityId) && isSignedIn() && isValidRunActivity(request.resource.data);
+      allow update: if isValidId(activityId) && isSignedIn() && resource.data.userId == request.auth.uid && isValidRunActivity(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }

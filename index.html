@@ -49,6 +49,22 @@
     }
   </script>
 
+  <script>
+    // Apply saved theme preference from LocalStorage immediately to prevent FOUC
+    (function () {
+      try {
+        var saved = localStorage.getItem('paceplot_theme');
+        var theme = saved === 'light' ? 'light' : 'dark';
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.classList.toggle('light', theme === 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
   <style>
     /* Custom scrollbars */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -110,27 +126,48 @@
     .eq-playing .eq-bar-1 { animation: spotify-eq 0.65s ease-in-out infinite; }
     .eq-playing .eq-bar-2 { animation: spotify-eq 0.5s ease-in-out 0.15s infinite; }
     .eq-playing .eq-bar-3 { animation: spotify-eq 0.75s ease-in-out 0.28s infinite; }
+
+    /* Light Mode Surface Refinements for Floating Map Widgets */
+    html.light #mapWeatherBadge,
+    html.light #mapSpotifyFloatingPill,
+    html.light #mapTapHint {
+      background-color: rgba(255, 255, 255, 0.94);
+      color: #1c1917;
+      border-color: rgba(214, 211, 209, 0.9);
+      box-shadow: 0 8px 20px rgba(28, 25, 23, 0.12);
+    }
+    html.light #mapWeatherBadge #weatherTempDisplay,
+    html.light #mapSpotifyFloatingPill #mapSpotifyTrackTitle {
+      color: #1c1917;
+    }
+    html.light #mapWeatherBadge #weatherRainContainer {
+      color: #0284c7;
+    }
+    html.light #btnMapQuickSpotify {
+      background-color: rgba(255, 255, 255, 0.95);
+      border-color: rgba(214, 211, 209, 0.9);
+    }
   </style>
 </head>
-<body class="bg-stone-950 sm:bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-0 sm:p-4 transition-colors duration-200">
+<body class="bg-stone-200 dark:bg-stone-950 sm:bg-stone-200/90 sm:dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-0 sm:p-4 transition-colors duration-200">
 
   <!-- Desktop Top Bar: Prototype Controls (Hidden on mobile screens) -->
-  <header class="w-full max-w-5xl mb-2.5 hidden sm:flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-stone-800/90 text-stone-200 rounded-xl backdrop-blur border border-stone-700/60 shadow-lg text-sm">
+  <header class="w-full max-w-5xl mb-2.5 hidden sm:flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-white/95 dark:bg-stone-800/90 text-stone-800 dark:text-stone-200 rounded-xl backdrop-blur border border-stone-300 dark:border-stone-700/60 shadow-lg text-sm transition-colors duration-200">
     <div class="flex items-center gap-2">
       <div class="w-7 h-7 rounded-lg bg-terracotta flex items-center justify-center text-white font-bold text-xs shadow-md">
         <i class="fa-solid fa-person-running"></i>
       </div>
       <div>
-        <span class="font-bold tracking-tight text-white">Pace Plot</span>
-        <span class="text-xs text-stone-400 ml-1">by Stride Circuit LLC</span>
+        <span class="font-bold tracking-tight text-stone-900 dark:text-white">Pace Plot</span>
+        <span class="text-xs text-stone-500 dark:text-stone-400 ml-1">by Stride Circuit LLC</span>
       </div>
-      <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-900/60 text-emerald-300 border border-emerald-700">Google Maps Platform</span>
+      <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">Google Maps Platform</span>
     </div>
 
     <!-- Quick Presets -->
     <div class="flex items-center gap-2">
-      <label for="locationPreset" class="text-xs text-stone-400 hidden sm:inline">Location:</label>
-      <select id="locationPreset" class="bg-stone-700 border border-stone-600 rounded px-2.5 py-1 text-xs text-stone-200 focus:outline-none focus:ring-1 focus:ring-terracotta">
+      <label for="locationPreset" class="text-xs text-stone-500 dark:text-stone-400 hidden sm:inline">Location:</label>
+      <select id="locationPreset" class="bg-stone-100 dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded px-2.5 py-1 text-xs text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-terracotta">
         <option value="parma">Parma / West Creek (HQ)</option>
         <option value="centralpark">Central Park, NYC</option>
         <option value="austin">Lady Bird Lake, Austin</option>
@@ -141,30 +178,31 @@
     <!-- Viewport & Mode Toggles -->
     <div class="flex items-center gap-2">
       <!-- Safety Agreement Modal Button -->
-      <button id="btnTopSafetyDisclaimer" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs text-amber-300 flex items-center gap-1.5 transition font-medium border border-stone-600 shadow-sm cursor-pointer" title="Review Pedestrian Safety Agreement">
+      <button id="btnTopSafetyDisclaimer" class="px-2.5 py-1 rounded bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5 transition font-medium border border-stone-300 dark:border-stone-600 shadow-sm cursor-pointer" title="Review Pedestrian Safety Agreement">
         <i class="fa-solid fa-shield-halved text-terracotta"></i>
         <span>Safety Terms</span>
       </button>
 
       <!-- Google Auth Button (Firebase) -->
-      <button id="btnGoogleAuth" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs text-stone-200 flex items-center gap-1.5 transition font-medium border border-stone-600 shadow-sm cursor-pointer" title="Google Account">
+      <button id="btnGoogleAuth" class="px-2.5 py-1 rounded bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-xs text-stone-800 dark:text-stone-200 flex items-center gap-1.5 transition font-medium border border-stone-300 dark:border-stone-600 shadow-sm cursor-pointer" title="Google Account">
         <i class="fa-brands fa-google text-terracotta"></i>
         <span id="googleAuthLabel">Sign In</span>
       </button>
 
-      <button id="toggleDeviceFrame" class="px-2.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-xs flex items-center gap-1.5 transition cursor-pointer">
+      <button id="toggleDeviceFrame" class="px-2.5 py-1 rounded bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-600 text-xs flex items-center gap-1.5 transition cursor-pointer">
         <i class="fa-solid fa-mobile-screen"></i>
         <span id="frameModeText">Fullscreen</span>
       </button>
 
-      <button id="toggleTheme" class="w-8 h-8 rounded-lg bg-stone-700 hover:bg-stone-600 flex items-center justify-center text-stone-200 transition cursor-pointer" title="Toggle Theme">
+      <button id="toggleTheme" class="px-2.5 py-1 h-8 rounded-lg bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 border border-stone-300 dark:border-stone-600 flex items-center justify-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200 transition cursor-pointer" title="Toggle Theme">
         <i id="themeIcon" class="fa-solid fa-moon"></i>
+        <span id="themeModeLabel" class="hidden md:inline">Dark</span>
       </button>
     </div>
   </header>
 
   <!-- Prototype Container (Adaptive: Fullscreen Native Android on mobile, Phone Frame on Desktop) -->
-  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-900 rounded-none sm:rounded-[36px] shadow-2xl border-0 sm:border-[8px] border-stone-800 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
+  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-900 rounded-none sm:rounded-[36px] shadow-2xl border-0 sm:border-[8px] border-stone-300 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
     
     <!-- Google Maps Platform Quota Banner (Demo Key Protection) -->
     <div id="gmpQuotaBanner" class="hidden bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2 text-[11px] text-center sticky top-0 z-50 shadow-sm">
@@ -185,8 +223,8 @@
       </div>
     </div>
 
-    <!-- App Top Bar -->
-    <nav class="w-full px-4 py-2.5 bg-cream dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between z-30">
+    <!-- App Top Bar (Condensed & Uncluttered) -->
+    <nav class="w-full px-4 py-2 bg-cream dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between z-30">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-lg bg-terracotta flex items-center justify-center text-white shadow-sm">
           <i class="fa-solid fa-route text-sm"></i>
@@ -202,19 +240,13 @@
           <i class="fa-solid fa-crown text-[9px]"></i>
           <span id="headerPremiumLabel">PRO</span>
         </button>
-        <button id="btnMobileAuth" class="px-2 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center gap-1 transition text-xs font-medium border border-stone-200 dark:border-stone-700 whitespace-nowrap shrink-0 cursor-pointer" title="Account">
+        <button id="btnMobileAuth" class="px-2.5 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center gap-1 transition text-xs font-medium border border-stone-200 dark:border-stone-700 whitespace-nowrap shrink-0 cursor-pointer" title="Account">
           <i class="fa-brands fa-google text-terracotta text-[10px]"></i>
           <span id="mobileAuthLabel" class="text-[10px]">Sign In</span>
         </button>
-        <button id="btnTopBarSpotify" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-[#1DB954] hover:bg-[#1DB954]/15 flex items-center justify-center transition text-sm shrink-0 cursor-pointer" title="Spotify Running Playlist & Controls">
-          <i class="fa-brands fa-spotify"></i>
-        </button>
-        <button id="audioVoiceToggle" class="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:text-terracotta flex items-center justify-center transition text-xs shrink-0 cursor-pointer" title="Audio Voice Guidance">
-          <i id="audioIcon" class="fa-solid fa-volume-high"></i>
-        </button>
-        <button id="healthStatusIndicator" class="hidden sm:flex px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold items-center gap-1 whitespace-nowrap shrink-0">
-          <i class="fa-solid fa-heart-pulse text-[9px]"></i>
-          <span>Health Sync</span>
+        <button id="btnOpenSettingsModal" class="px-2.5 py-1 h-7 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:text-terracotta border border-stone-200 dark:border-stone-700 flex items-center gap-1.5 transition text-[11px] font-bold shrink-0 cursor-pointer" title="Map, Pace, Audio & Theme Settings">
+          <i class="fa-solid fa-gear text-terracotta text-xs"></i>
+          <span>Settings</span>
         </button>
       </div>
     </nav>
@@ -227,20 +259,20 @@
       <!-- ========================================== -->
       <section id="tabPlanner" class="tab-content absolute inset-0 flex flex-col z-20">
         
-        <!-- Interactive Map Container (Expansive, top portion) -->
+        <!-- Interactive Map Container (Expansive, uncluttered top portion) -->
         <div id="mapWrapper" class="flex-1 relative w-full h-full min-h-[300px] overflow-hidden bg-stone-200 dark:bg-stone-800">
           <div id="map"></div>
           
           <!-- Live Location & Place Search Bar -->
           <div class="absolute top-2.5 left-3 right-3 z-20">
             <div class="relative shadow-lg">
-              <div class="flex items-center bg-white/95 dark:bg-stone-800/95 backdrop-blur-md rounded-2xl border border-stone-200 dark:border-stone-700 px-3 py-2">
-                <i class="fa-solid fa-magnifying-glass text-terracotta text-sm mr-2.5"></i>
+              <div class="flex items-center bg-white/95 dark:bg-stone-800/95 backdrop-blur-md rounded-2xl border border-stone-200 dark:border-stone-700 px-3 py-1.5">
+                <i class="fa-solid fa-magnifying-glass text-terracotta text-xs mr-2"></i>
                 <input id="inputLocationSearch" type="text" placeholder="Search address, park, or city..." class="bg-transparent flex-1 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none">
                 <button id="btnClearSearch" class="hidden text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs px-1 mr-1">
                   <i class="fa-solid fa-xmark"></i>
                 </button>
-                <button id="btnSearchSubmit" class="w-6 h-6 rounded-lg bg-terracotta text-white flex items-center justify-center text-[10px] hover:bg-terracotta-hover transition" title="Search">
+                <button id="btnSearchSubmit" class="w-6 h-6 rounded-lg bg-terracotta text-white flex items-center justify-center text-[10px] hover:bg-terracotta-hover transition cursor-pointer" title="Search">
                   <i class="fa-solid fa-arrow-right"></i>
                 </button>
               </div>
@@ -250,13 +282,7 @@
             </div>
           </div>
 
-          <!-- Tap to Pin Map Hint -->
-          <div id="mapTapHint" class="absolute bottom-3 left-3 bg-stone-900/85 backdrop-blur-md text-white px-3 py-1.5 rounded-xl border border-stone-700/80 text-[11px] shadow-lg flex items-center gap-1.5 pointer-events-none z-20">
-            <i class="fa-solid fa-hand-pointer text-terracotta text-xs"></i>
-            <span>Long-press map to drop Start line or Waypoint pin</span>
-          </div>
-
-          <!-- Dropped Pin Action Prompt (Shown on Long-Press) -->
+          <!-- Dropped Pin Action Prompt (Shown only on Long-Press) -->
           <div id="droppedPinPrompt" class="hidden absolute bottom-14 left-3 right-3 bg-stone-950/95 text-white p-3.5 rounded-3xl shadow-2xl backdrop-blur-xl border border-terracotta/50 z-30 transition-all transform duration-200">
             <div class="flex items-center justify-between pb-2 border-b border-stone-800">
               <div class="flex items-center gap-2">
@@ -289,41 +315,38 @@
             </div>
           </div>
 
-          <!-- OpenWeather Current Conditions Floating Badge -->
-          <div id="mapWeatherBadge" class="absolute top-14 left-3 z-20 flex items-center gap-2 bg-stone-900/90 text-white backdrop-blur-md px-3 py-1.5 rounded-2xl border border-stone-700/80 shadow-lg text-xs transition-all hover:bg-stone-900 cursor-pointer" title="Live Weather Conditions (Click to announce runner weather)">
-            <div class="flex items-center gap-1.5">
-              <i id="weatherConditionIcon" class="fa-solid fa-cloud-sun text-amber-400 text-sm"></i>
-              <span id="weatherTempDisplay" class="font-black font-mono tabular-nums text-white text-xs">64°F</span>
+          <!-- Compact Top-Left Weather Chip -->
+          <div id="mapWeatherBadge" class="absolute top-12 left-3 z-20 flex items-center gap-1.5 bg-stone-900/90 text-white backdrop-blur-md px-2.5 py-1 rounded-full border border-stone-700/80 shadow-md text-[11px] transition-all hover:bg-stone-900 cursor-pointer" title="Live Weather Conditions (Click to announce runner weather)">
+            <i id="weatherConditionIcon" class="fa-solid fa-cloud-sun text-amber-400 text-xs"></i>
+            <span id="weatherTempDisplay" class="font-black font-mono tabular-nums text-white">64°F</span>
+            <span class="text-stone-500 text-[10px]">·</span>
+            <div id="weatherRainContainer" class="flex items-center gap-1 text-[10px] text-sky-400 font-bold tabular-nums">
+              <i class="fa-solid fa-droplet text-[8px]"></i>
+              <span id="weatherRainProb">8%</span>
             </div>
-            <span class="text-stone-600 dark:text-stone-500 text-[10px]">·</span>
-            <div id="weatherRainContainer" class="flex items-center gap-1 text-[11px] text-sky-400 font-bold tabular-nums">
-              <i class="fa-solid fa-droplet text-[9px]"></i>
-              <span id="weatherRainProb">8% rain</span>
-            </div>
-            <span id="weatherConditionSummary" class="text-[10px] text-stone-400 font-medium hidden md:inline truncate max-w-[110px]">· Dry</span>
+            <span id="weatherConditionSummary" class="hidden">· Dry</span>
           </div>
 
-          <!-- Pre-Run / Map Floating Spotify Mini-Player Pill (Always accessible on Map) -->
-          <div id="mapSpotifyFloatingPill" class="absolute top-14 right-3 z-20 flex items-center gap-2 bg-stone-950/90 text-white backdrop-blur-md pl-2.5 pr-2 py-1 rounded-2xl border border-stone-700/80 shadow-lg text-xs transition-all hover:border-[#1DB954]/60">
-            <button id="btnMapSpotifyOpenDrawer" class="flex items-center gap-1.5 text-left min-w-0 max-w-[135px] sm:max-w-[155px] cursor-pointer" title="Open Spotify Running Playlists">
-              <i class="fa-brands fa-spotify text-[#1DB954] text-sm shrink-0"></i>
-              <div class="truncate">
-                <div id="mapSpotifyTrackTitle" class="text-[10px] font-extrabold text-white truncate leading-tight">Midnight Greenway Stride</div>
-                <div id="mapSpotifySubLabel" class="text-[9px] font-mono tabular-nums text-[#1DB954] truncate leading-none">170 BPM · Ready</div>
-              </div>
+          <!-- Compact Top-Right Spotify Pill (Locked under PRO unless Trial or PRO active) -->
+          <div id="mapSpotifyFloatingPill" class="absolute top-12 right-3 z-20 flex items-center gap-1.5 bg-stone-950/90 text-white backdrop-blur-md pl-2.5 pr-1.5 py-1 rounded-full border border-stone-700/80 shadow-md text-xs transition-all hover:border-[#1DB954]/60">
+            <button id="btnMapSpotifyOpenDrawer" class="flex items-center gap-1.5 text-left min-w-0 max-w-[130px] cursor-pointer" title="Open Spotify Running Playlists (Pace Plot PRO)">
+              <i class="fa-brands fa-spotify text-[#1DB954] text-xs shrink-0"></i>
+              <span id="mapSpotifyTrackTitle" class="text-[10px] font-bold text-white truncate">Spotify</span>
+              <span id="mapSpotifyProLockBadge" class="px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[8px] font-black uppercase shrink-0 flex items-center gap-0.5">
+                <i class="fa-solid fa-lock text-[7px]"></i> PRO
+              </span>
+              <span id="mapSpotifySubLabel" class="hidden">170 BPM</span>
             </button>
-            <div class="flex items-center gap-1 border-l border-stone-800 pl-1.5">
-              <button id="btnMapSpotifyPlayPause" class="w-6 h-6 rounded-lg bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 flex items-center justify-center text-[10px] transition active:scale-95 cursor-pointer" title="Play / Pause Running Playlist">
-                <i id="mapSpotifyPlayIcon" class="fa-solid fa-play"></i>
-              </button>
-              <button id="btnMapSpotifyNext" class="w-6 h-6 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 flex items-center justify-center text-[10px] transition active:scale-95 cursor-pointer" title="Next Track">
-                <i class="fa-solid fa-forward-step"></i>
-              </button>
-            </div>
+            <button id="btnMapSpotifyPlayPause" class="w-5 h-5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 flex items-center justify-center text-[9px] transition active:scale-95 cursor-pointer shrink-0" title="Play / Pause Running Playlist">
+              <i id="mapSpotifyPlayIcon" class="fa-solid fa-lock"></i>
+            </button>
+            <button id="btnMapSpotifyNext" class="hidden" title="Next Track">
+              <i class="fa-solid fa-forward-step"></i>
+            </button>
           </div>
 
           <!-- Active Navigation Floating Card (Athletic HUD + Integrated Spotify Mini-Player) -->
-          <div id="navInstructionCard" class="hidden absolute top-14 left-3 right-3 bg-stone-950/95 text-white p-3.5 rounded-3xl shadow-2xl backdrop-blur-xl border border-stone-800 z-30 transition-all transform duration-300">
+          <div id="navInstructionCard" class="hidden absolute top-12 left-3 right-3 bg-stone-950/95 text-white p-3.5 rounded-3xl shadow-2xl backdrop-blur-xl border border-stone-800 z-30 transition-all transform duration-300">
             <!-- Turn instruction header -->
             <div class="flex items-start gap-3">
               <div class="w-11 h-11 rounded-2xl bg-terracotta flex items-center justify-center text-white text-xl flex-shrink-0 shadow-md">
@@ -384,9 +407,20 @@
             </div>
 
             <!-- ========================================================= -->
-            <!-- SPOTIFY NAVIGATION HUD MINI-PLAYER WIDGET                 -->
+            <!-- SPOTIFY NAVIGATION HUD MINI-PLAYER WIDGET (PRO FEATURE)   -->
             <!-- ========================================================= -->
-            <div id="hudSpotifyMiniPlayer" class="mt-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-stone-900 via-stone-900/95 to-emerald-950/40 border border-stone-800 hover:border-[#1DB954]/40 transition-all">
+            <div id="hudSpotifyMiniPlayer" class="mt-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-stone-900 via-stone-900/95 to-emerald-950/40 border border-stone-800 hover:border-[#1DB954]/40 transition-all relative overflow-hidden">
+              <!-- PRO Paywall Lock Overlay inside HUD (Shown when user is not in active trial or PRO) -->
+              <div id="hudSpotifyLockOverlay" class="mb-2 px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <i class="fa-solid fa-lock text-amber-400 text-[10px] shrink-0"></i>
+                  <span id="hudSpotifyLockText" class="text-[10px] font-bold text-amber-200 truncate">PRO Feature · Start 7-Day Free Trial to Unlock Spotify HUD</span>
+                </div>
+                <button id="btnHudUnlockSpotifyPro" class="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-terracotta text-white font-black text-[9px] uppercase tracking-wider shrink-0 hover:opacity-95 transition cursor-pointer">
+                  Unlock Free Trial
+                </button>
+              </div>
+
               <div class="flex items-center justify-between gap-2">
                 <!-- Track Artwork + Equalizer + Track Info -->
                 <div id="btnHudSpotifyExpand" class="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group" title="Tap to switch running playlist or manage Spotify API">
@@ -470,83 +504,71 @@
             </div>
           </div>
 
-          <!-- Map Floating Quick Actions (Right vertical stack) -->
+          <!-- Streamlined 2-Button Map Control Stack (Recenter + Map Settings) -->
           <div class="absolute right-3 bottom-3 flex flex-col gap-2 z-20">
-            <button id="btnMapQuickSpotify" class="w-9 h-9 rounded-full bg-stone-950/90 text-[#1DB954] border border-stone-700/80 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-900 transition cursor-pointer" title="Spotify Running Playlist & Controls">
-              <i class="fa-brands fa-spotify text-sm"></i>
-            </button>
-            <button id="btnToggleSatellite" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Toggle Satellite / Terrain">
-              <i class="fa-solid fa-layer-group text-xs"></i>
-            </button>
-            <button id="btnToggleSafetyHeatmap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-terracotta shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Toggle Safety Overlay">
-              <i class="fa-solid fa-shield-halved text-xs"></i>
-            </button>
-            <button id="btnRecenter" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Recenter Location">
+            <button id="btnRecenter" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 border border-stone-200/80 dark:border-stone-700/80 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Recenter Route on Map">
               <i class="fa-solid fa-location-crosshairs text-xs"></i>
             </button>
-            <button id="btnMaximizeMap" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Toggle Bottom Drawer">
-              <i class="fa-solid fa-up-down text-xs"></i>
+            <button id="btnMapOpenSettings" class="w-9 h-9 rounded-full bg-stone-900/95 dark:bg-stone-800/95 text-white border border-stone-700/80 shadow-lg backdrop-blur flex items-center justify-center hover:bg-terracotta transition cursor-pointer" title="Map Layers, Pace, Terrain & Audio Settings">
+              <i class="fa-solid fa-sliders text-xs text-terracotta"></i>
             </button>
           </div>
         </div>
 
-        <!-- Collapsible Bottom Planning Sheet (Streamlined One-Screen Experience) -->
-        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl p-3 sm:p-4 shadow-2xl z-30 transition-all duration-300 flex-shrink-0 max-h-[65%] overflow-y-auto">
+        <!-- Condensed Bottom Planning Sheet (Maximum Map Breathing Room) -->
+        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl px-3.5 pt-2 pb-3 shadow-2xl z-30 transition-all duration-300 flex-shrink-0 max-h-[50%] overflow-y-auto">
           
           <!-- Clickable Sheet Drag Handle / Toggle Bar -->
-          <div id="sheetDragHandle" class="w-full flex items-center justify-center py-1 cursor-pointer group" title="Swipe or tap to toggle drawer">
-            <div class="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 group-hover:bg-terracotta rounded-full transition"></div>
+          <div id="sheetDragHandle" class="w-full flex items-center justify-center py-0.5 cursor-pointer group" title="Tap to collapse or expand route drawer">
+            <div class="w-10 h-1 bg-stone-300 dark:bg-stone-700 group-hover:bg-terracotta rounded-full transition"></div>
           </div>
 
           <!-- Compact / Minimized Sheet Bar (Shown when collapsed) -->
-          <div id="sheetCompactBar" class="hidden flex items-center justify-between gap-2 pt-1 pb-1">
+          <div id="sheetCompactBar" class="hidden flex items-center justify-between gap-2 pt-1 pb-0.5">
             <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2 text-xs text-stone-500">
+              <div class="flex items-center gap-1.5 text-[11px] text-stone-500">
                 <span class="font-bold text-terracotta">9.8 Safety</span>
                 <span>·</span>
                 <span id="compactRouteMileage" class="font-bold text-stone-900 dark:text-white">3.10 mi</span>
                 <span>·</span>
                 <span>+42 ft</span>
               </div>
-              <h3 id="compactRouteTitle" class="text-xs font-bold text-stone-800 dark:text-stone-200 truncate mt-0.5">West Creek Greenway Safe Loop</h3>
+              <h3 id="compactRouteTitle" class="text-xs font-bold text-stone-800 dark:text-stone-200 truncate">West Creek Greenway Safe Loop</h3>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
               <button id="compactBtnStartNav" class="px-3 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center gap-1 shadow-sm transition cursor-pointer">
                 <i id="compactBtnNavIcon" class="fa-solid fa-circle-play"></i>
-                <span>Nav</span>
+                <span>Start</span>
               </button>
-              <button id="btnExpandFromCompact" class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-600 dark:text-stone-300 flex items-center justify-center text-xs transition cursor-pointer" title="Show Route Details">
-                <i class="fa-solid fa-sliders"></i>
+              <button id="btnExpandFromCompact" class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-600 dark:text-stone-300 flex items-center justify-center text-xs transition cursor-pointer" title="Expand Route Planner">
+                <i class="fa-solid fa-chevron-up"></i>
               </button>
             </div>
           </div>
 
-          <!-- Full Planning Controls (Streamlined One-Screen Layout) -->
-          <div id="sheetFullContent" class="space-y-2.5 pt-1">
-            <!-- 1. Route Summary Row (Always Visible) -->
+          <!-- Streamlined Full Planning Controls -->
+          <div id="sheetFullContent" class="space-y-2 pt-1">
+            <!-- 1. Route Summary Row -->
             <div class="flex items-center justify-between">
               <div class="min-w-0 flex-1 pr-2">
-                <div class="flex items-center gap-1.5 text-[11px] font-semibold text-stone-500 dark:text-stone-400">
-                  <span class="text-terracotta uppercase tracking-wider font-extrabold text-[10px]">Safe AI Loop</span>
-                  <span>·</span>
-                  <span class="text-emerald-600 dark:text-emerald-400 font-bold">9.8 Safety</span>
+                <div class="flex items-center gap-1.5 text-[10px] font-semibold text-stone-500 dark:text-stone-400">
+                  <span class="text-emerald-600 dark:text-emerald-400 font-bold"><i class="fa-solid fa-shield-halved text-[9px] mr-0.5"></i>9.8 Safety</span>
                   <span>·</span>
                   <span id="routeElevationKicker">+42 ft</span>
+                  <span>·</span>
+                  <span id="estDurationText" class="text-stone-500 dark:text-stone-400">~26 min at 8'30"</span>
                 </div>
                 <h2 id="routeTitle" class="text-sm font-extrabold text-stone-900 dark:text-white truncate">West Creek Greenway Safe Loop</h2>
               </div>
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <div class="text-right">
-                  <div id="routeMileageBadge" class="text-lg font-black font-mono text-stone-900 dark:text-white leading-tight">3.10 <span class="text-[10px] font-sans font-semibold text-stone-500">mi</span></div>
-                  <p id="estDurationText" class="text-[10px] text-stone-500 dark:text-stone-400 leading-none">~26 min at 8'30"</p>
-                </div>
-                <button id="btnToggleSheet" class="w-7 h-7 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition cursor-pointer" title="Collapse Drawer">
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <div id="routeMileageBadge" class="text-base font-black font-mono text-stone-900 dark:text-white leading-none">3.10 <span class="text-[10px] font-sans font-semibold text-stone-500">mi</span></div>
+                <button id="btnToggleSheet" class="w-7 h-7 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition cursor-pointer" title="Minimize Sheet">
                   <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
                 </button>
               </div>
             </div>
 
-            <!-- 2. Loop Distance Preset Chips (Segmented Pill Row) -->
+            <!-- 2. Loop Distance Preset Chips + Route Options Button -->
             <div class="flex items-center gap-1.5">
               <div class="grid grid-cols-4 gap-1 flex-1 bg-stone-100 dark:bg-stone-800/80 p-0.5 rounded-xl text-xs font-bold text-center">
                 <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="1.5">
@@ -562,64 +584,40 @@
                   10K (6.2)
                 </button>
               </div>
-              <button id="btnToggleCustomDist" class="px-2 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-[11px] text-terracotta font-bold hover:bg-stone-200 dark:hover:bg-stone-700 transition cursor-pointer" title="Custom Slider">
-                <i class="fa-solid fa-sliders"></i>
+              <button id="btnSheetOpenSettings" class="px-2.5 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[11px] text-stone-700 dark:text-stone-200 hover:border-terracotta font-bold flex items-center gap-1 transition cursor-pointer shrink-0" title="Custom Distance, Target Pace, Surface Filters & Map Settings">
+                <i class="fa-solid fa-sliders text-terracotta text-[10px]"></i>
+                <span>Options</span>
               </button>
             </div>
 
-            <!-- Custom Distance Slider (Hidden by default, toggleable) -->
-            <div id="customSliderContainer" class="hidden pt-1 border-t border-stone-200 dark:border-stone-800">
-              <div class="flex justify-between text-xs font-medium text-stone-700 dark:text-stone-300 mb-1">
-                <span>Custom Target:</span>
-                <span id="targetDistanceDisplay" class="font-bold text-terracotta">3.1 miles</span>
-              </div>
-              <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
-            </div>
-
-            <!-- 3. AI Safe Route Options (Horizontal Swipeable Carousel) -->
+            <!-- 3. AI Safe Route Options (Compact Horizontal Carousel + Inline Redo & Cloud Save) -->
             <div>
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-1.5">
                   <i class="fa-solid fa-route text-emerald-500 text-[10px]"></i>
-                  <span class="text-[10px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">Safe Route Choices</span>
+                  <span class="text-[10px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">Routes</span>
                   <span id="routeChoicesBadge" class="text-[10px] font-mono tabular-nums font-bold text-stone-500 dark:text-stone-400">· 4 Options</span>
                 </div>
-                <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-[11px] font-extrabold flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Generate fresh alternative routes">
-                  <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
-                  <span>Redo</span>
-                </button>
+                <div class="flex items-center gap-2.5">
+                  <button id="btnSaveRouteToCloud" class="text-stone-600 dark:text-stone-300 hover:text-terracotta text-[10px] font-bold flex items-center gap-1 transition cursor-pointer" title="Save Active Route to Cloud">
+                    <i class="fa-solid fa-cloud-arrow-up text-terracotta text-[10px]"></i>
+                    <span id="saveRouteToCloudLabel">Save</span>
+                  </button>
+                  <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-[10px] font-extrabold flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Generate fresh alternative routes">
+                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+                    <span>Redo</span>
+                  </button>
+                </div>
               </div>
 
               <!-- Route Choice Horizontal Carousel -->
-              <div id="routeChoicesList" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x">
+              <div id="routeChoicesList" class="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none snap-x">
                 <!-- Rendered dynamically as horizontal snap cards -->
               </div>
             </div>
 
-            <!-- 4. Collapsible Detailed Drawer (Elevation Profile, Pace, Surface & Turns) -->
-            <div id="sheetExpandedDetails" class="hidden space-y-2.5 pt-2 border-t border-stone-200 dark:border-stone-800">
-              <!-- Target Pace Coach Segmented Selector -->
-              <div>
-                <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  <span>Target Pace:</span>
-                  <span id="targetPaceDisplay" class="font-bold font-mono text-terracotta text-xs">8'30" /mi (Base)</span>
-                </div>
-                <div class="grid grid-cols-4 gap-1 bg-stone-100 dark:bg-stone-800/80 p-0.5 rounded-xl text-xs font-bold text-center">
-                  <button class="pace-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="15:00" data-label="Walk">
-                    Walk 15'
-                  </button>
-                  <button class="pace-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="9:45" data-label="Easy">
-                    Easy 9'45"
-                  </button>
-                  <button class="pace-preset-btn py-1 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[11px] cursor-pointer" data-pace="8:30" data-label="Base">
-                    Base 8'30"
-                  </button>
-                  <button class="pace-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="7:30" data-label="Tempo">
-                    Tempo 7'30"
-                  </button>
-                </div>
-              </div>
-
+            <!-- 4. Collapsible Elevation & Turns Drawer (Clean & Focused) -->
+            <div id="sheetExpandedDetails" class="hidden space-y-2 pt-1.5 border-t border-stone-200 dark:border-stone-800">
               <!-- Elevation Profile Mini-Chart -->
               <div class="bg-stone-100 dark:bg-stone-800/50 p-2 rounded-2xl border border-stone-200 dark:border-stone-800">
                 <div class="flex items-center justify-between text-[11px] text-stone-500 mb-1">
@@ -628,7 +626,7 @@
                   </span>
                   <span class="font-mono text-[10px]" id="elevProfileStats">+42 ft Gain · 780 ft Max</span>
                 </div>
-                <svg class="w-full h-10" viewBox="0 0 300 44" preserveAspectRatio="none">
+                <svg class="w-full h-9" viewBox="0 0 300 44" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stop-color="#E15A2B" stop-opacity="0.45"/>
@@ -641,72 +639,32 @@
                 </svg>
               </div>
 
-              <!-- Surface & Safety Filters -->
-              <div class="grid grid-cols-3 gap-1.5 text-xs">
-                <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-terracotta bg-terracotta text-white font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="trail">
-                  <i class="fa-solid fa-tree text-xs"></i>
-                  <span class="text-[10px]">Greenway</span>
-                </button>
-                <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="road">
-                  <i class="fa-solid fa-road text-xs"></i>
-                  <span class="text-[10px]">Quiet Roads</span>
-                </button>
-                <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="lit">
-                  <i class="fa-solid fa-lightbulb text-xs"></i>
-                  <span class="text-[10px]">Well-Lit Only</span>
-                </button>
-              </div>
-
-              <!-- Zero-Pill Safety Metrics Bar -->
-              <div class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
-                <span id="metricSidewalk" class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
-                  <i class="fa-solid fa-check text-xs"></i> 98% Sidewalks
-                </span>
-                <span id="metricLit" class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
-                  <i class="fa-solid fa-bolt text-xs"></i> 100% Lit Streets
-                </span>
-                <span id="metricGain" class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold text-[11px]">
-                  <i class="fa-solid fa-mountain text-xs"></i> +42 ft Gain
-                </span>
-              </div>
-
               <!-- Turn-by-Turn Audio Guidance Preview -->
               <div class="border border-stone-200 dark:border-stone-800 rounded-2xl bg-stone-50/70 dark:bg-stone-800/40 overflow-hidden">
                 <button id="btnToggleManeuversList" class="w-full py-1.5 px-3 flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition cursor-pointer">
                   <span class="flex items-center gap-1.5">
                     <i class="fa-solid fa-volume-high text-terracotta text-xs"></i>
-                    <span>Turn-by-Turn Audio Guidance</span>
+                    <span>Turn-by-Turn Audio Preview</span>
                     <span id="maneuversCountBadge" class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300">6 turns</span>
                   </span>
                   <i id="maneuversChevron" class="fa-solid fa-chevron-down text-[10px] text-stone-400 transition-transform"></i>
                 </button>
-                <div id="maneuversListContainer" class="hidden px-2.5 pb-2.5 space-y-1.5 border-t border-stone-200/60 dark:border-stone-700/60 pt-2 max-h-40 overflow-y-auto">
+                <div id="maneuversListContainer" class="hidden px-2.5 pb-2.5 space-y-1.5 border-t border-stone-200/60 dark:border-stone-700/60 pt-2 max-h-36 overflow-y-auto">
                   <!-- Rendered dynamically -->
                 </div>
               </div>
-
-              <div class="grid grid-cols-2 gap-2 pt-1">
-                <button id="btnGenerateAiRoute" class="py-2 px-3 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
-                  <i class="fa-solid fa-wand-magic-sparkles text-terracotta"></i>
-                  <span>Re-Map AI Loop</span>
-                </button>
-                <button id="btnSaveRouteToCloud" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-800/80 hover:bg-stone-200 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition cursor-pointer">
-                  <i class="fa-solid fa-cloud-arrow-up text-terracotta"></i>
-                  <span id="saveRouteToCloudLabel">Save to Cloud</span>
-                </button>
-              </div>
             </div>
 
-            <!-- 5. Primary Command Action Row (Always Visible on One Screen) -->
-            <div class="flex items-center gap-2 pt-0.5">
-              <button id="btnStartNavigation" class="flex-1 h-11 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-[0.98] transition-all cursor-pointer">
-                <i id="btnNavIcon" class="fa-solid fa-circle-play text-base"></i>
+            <!-- 5. Primary Command Action Row -->
+            <div class="flex items-center gap-1.5 pt-0.5">
+              <button id="btnStartNavigation" class="flex-1 h-10 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-[0.98] transition-all cursor-pointer">
+                <i id="btnNavIcon" class="fa-solid fa-circle-play text-sm"></i>
                 <span id="btnNavLabel">Start Safe Voice Nav</span>
               </button>
-              <button id="btnToggleDetailedDrawer" class="h-11 px-3 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition cursor-pointer flex-shrink-0" title="Toggle Elevation Profile, Turns & Surface Filters">
-                <i class="fa-solid fa-chart-area text-terracotta"></i>
-                <span id="btnDrawerToggleLabel" class="hidden sm:inline">Details</span>
-                <i id="btnDrawerChevron" class="fa-solid fa-chevron-up text-[10px] text-stone-400"></i>
+              <button id="btnToggleDetailedDrawer" class="h-10 px-2.5 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition cursor-pointer flex-shrink-0" title="Toggle Elevation Profile & Turn List">
+                <i class="fa-solid fa-chart-area text-terracotta text-xs"></i>
+                <span id="btnDrawerToggleLabel">Turns</span>
+                <i id="btnDrawerChevron" class="fa-solid fa-chevron-up text-[9px] text-stone-400"></i>
               </button>
             </div>
           </div>
@@ -1452,19 +1410,19 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- UPGRADE TO PREMIUM MODAL OVERLAY -->
+    <!-- UPGRADE TO PREMIUM & FREE TRIAL PAYWALL MODAL -->
     <!-- ========================================== -->
-    <div id="modalUpgradePremium" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4 transition-all">
-      <div class="bg-stone-900 border border-stone-700 text-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-4">
+    <div id="modalUpgradePremium" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4 transition-all">
+      <div class="bg-stone-900 border border-stone-700 text-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-3.5">
         
         <!-- Close button -->
-        <button id="btnCloseUpgradeModal" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition">
+        <button id="btnCloseUpgradeModal" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer">
           <i class="fa-solid fa-xmark text-xs"></i>
         </button>
 
         <!-- Header with Golden Crown Icon -->
-        <div class="text-center pt-2 space-y-1.5">
-          <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-terracotta text-white flex items-center justify-center text-2xl shadow-xl shadow-terracotta/30">
+        <div class="text-center pt-1 space-y-1">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-terracotta text-white flex items-center justify-center text-xl shadow-xl shadow-terracotta/30">
             <i class="fa-solid fa-crown"></i>
           </div>
           <div class="text-amber-400 text-[10px] font-black uppercase tracking-wider">
@@ -1472,33 +1430,54 @@
           </div>
           <h2 class="text-lg font-black text-white">Elevate Every Stride</h2>
           <p class="text-xs text-stone-400 max-w-xs mx-auto">
-            Uncompromised runner safety, real-time family tracking, and advanced meteorological radar.
+            Unlock Spotify HUD Running Audio, real-time family tracking, and advanced meteorological radar.
           </p>
+        </div>
+
+        <!-- Contextual Paywall Reason Banner (Shown when redirected from a locked PRO action) -->
+        <div id="proModalPaywallReason" class="hidden px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-bold text-center">
+        </div>
+
+        <!-- Live Free Trial / Paywall Lifecycle Status Banner -->
+        <div id="proModalTrialStatusBanner" class="p-3 rounded-2xl bg-stone-950/80 border border-amber-500/30 text-stone-200 text-xs space-y-1">
         </div>
 
         <!-- Subscription Tier Switcher (Monthly vs Annual) -->
         <div class="bg-stone-950/80 p-1 rounded-2xl border border-stone-800 flex items-center text-xs font-bold">
-          <button id="btnTierAnnual" class="flex-1 py-2 px-2 rounded-xl bg-terracotta text-white shadow-md transition flex items-center justify-center gap-1.5">
+          <button id="btnTierAnnual" class="flex-1 py-2 px-2 rounded-xl bg-terracotta text-white shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
             <span>Annual</span>
             <span class="text-[9px] px-1.5 py-0.2 rounded font-extrabold bg-emerald-500 text-stone-950">SAVE 40%</span>
           </button>
-          <button id="btnTierMonthly" class="flex-1 py-2 px-2 rounded-xl text-stone-400 hover:text-white transition flex items-center justify-center">
+          <button id="btnTierMonthly" class="flex-1 py-2 px-2 rounded-xl text-stone-400 hover:text-white transition flex items-center justify-center cursor-pointer">
             <span>Monthly</span>
           </button>
         </div>
 
         <!-- Price Box -->
-        <div class="text-center py-1">
-          <div class="flex items-baseline justify-center gap-1 font-mono">
+        <div class="text-center py-0.5">
+          <div class="flex items-baseline justify-center gap-1 font-mono tabular-nums">
             <span id="tierPriceLarge" class="text-3xl font-black text-white">$4.16</span>
             <span id="tierPricePeriod" class="text-xs text-stone-400 font-semibold">/ month</span>
           </div>
-          <p id="tierBillingDetail" class="text-[11px] text-stone-400 mt-0.5">Billed annually at $49.99/year (7-day free trial)</p>
+          <p id="tierBillingDetail" class="text-[11px] text-stone-400 mt-0.5">Billed annually at $49.99/year (Includes 7-day free trial)</p>
         </div>
 
-        <!-- Exclusive Premium Features Highlights -->
-        <div class="space-y-2.5 text-xs pt-1">
-          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+        <!-- Exclusive Premium Features Highlights (Includes Spotify Running Audio) -->
+        <div class="space-y-2 text-xs">
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/50 border border-[#1DB954]/30">
+            <div class="w-8 h-8 rounded-xl bg-[#1DB954]/15 text-[#1DB954] flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-brands fa-spotify"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-1.5">
+                <h4 class="font-bold text-white text-xs">Spotify Running HUD & BPM Cadence Sync</h4>
+                <span class="text-[8px] px-1.5 py-0.2 rounded bg-[#1DB954]/20 text-[#1DB954] font-black uppercase">PRO</span>
+              </div>
+              <p class="text-[11px] text-stone-400">Control Spotify playlists directly from the navigation HUD with voice-turn audio ducking & pace-matched BPM.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
             <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm flex-shrink-0">
               <i class="fa-solid fa-tower-broadcast"></i>
             </div>
@@ -1508,7 +1487,7 @@
             </div>
           </div>
 
-          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
             <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm flex-shrink-0">
               <i class="fa-solid fa-cloud-bolt"></i>
             </div>
@@ -1518,17 +1497,7 @@
             </div>
           </div>
 
-          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
-            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm flex-shrink-0">
-              <i class="fa-solid fa-cloud-arrow-up"></i>
-            </div>
-            <div class="flex-1">
-              <h4 class="font-bold text-white text-xs">Unlimited Cloud Storage & Offline Maps</h4>
-              <p class="text-[11px] text-stone-400">Save unlimited custom loop corridors with instant GPX export to Apple Watch & Garmin.</p>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-3 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
             <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm flex-shrink-0">
               <i class="fa-solid fa-heart-pulse"></i>
             </div>
@@ -1539,18 +1508,30 @@
           </div>
         </div>
 
-        <!-- Action Button & Trial CTA -->
+        <!-- Action Buttons: Free Trial + Paid Subscription + Trial Expiration Simulator -->
         <div class="space-y-2 pt-1">
+          <button id="btnStartFreeTrial" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:opacity-95 text-stone-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition cursor-pointer">
+            <i class="fa-solid fa-gift"></i>
+            <span>Start 7-Day Free Trial · $0 Today</span>
+          </button>
+
           <button id="btnSubscribePro" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-terracotta hover:opacity-95 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-terracotta/30 active:scale-95 transition cursor-pointer">
             <i class="fa-solid fa-bolt"></i>
-            <span id="btnSubscribeLabel">Start 7-Day Free Trial ($49.99/yr)</span>
+            <span id="btnSubscribeLabel">Subscribe to Annual PRO ($49.99/yr)</span>
           </button>
-          <div class="flex items-center justify-center gap-3 text-[10px] text-stone-400">
+
+          <!-- Interactive Trial Expiration Test Button (Visible while Free Trial is Active) -->
+          <button id="btnExpireTrialNow" class="hidden w-full py-2 px-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer" title="Fast-forward trial timer to verify paywall lock">
+            <i class="fa-solid fa-Forward-fast text-[10px]"></i>
+            <span>Simulate Trial Expiration (Lock in Paywall Now)</span>
+          </button>
+
+          <div class="flex items-center justify-center gap-3 text-[10px] text-stone-400 pt-0.5">
             <span>Cancel anytime</span>
             <span>•</span>
-            <button id="btnRestorePurchases" class="hover:text-white underline">Restore Purchase</button>
+            <button id="btnRestorePurchases" class="hover:text-white underline cursor-pointer">Restore Purchase</button>
             <span>•</span>
-            <span id="tierDiscountBadge" class="text-emerald-400 font-bold">40% Off Annual</span>
+            <button id="btnResetTrialDemo" class="hidden text-amber-400 hover:underline cursor-pointer">Reset Trial Demo</button>
           </div>
         </div>
 
@@ -1668,6 +1649,7 @@
             <div>
               <h3 class="text-sm font-black text-white flex items-center gap-1.5">
                 <span>Spotify Running Audio</span>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black uppercase">PRO</span>
                 <span id="spotifyModalStatusText" class="text-[10px] font-mono font-semibold text-[#1DB954]">· Cadence Synth</span>
               </h3>
               <p class="text-[11px] text-stone-400">Control your running playlists & pace-synced BPM right from the HUD</p>
@@ -1676,6 +1658,30 @@
           <button id="btnCloseSpotifyModal" class="w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
+        </div>
+
+        <!-- PRO Paywall Gate Banner inside Spotify Drawer (Shown when user is not in active Trial or PRO) -->
+        <div id="spotifyModalProGateBanner" class="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-terracotta/15 to-stone-950 border border-amber-500/40 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-amber-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-lock text-amber-400"></i>
+              <span id="spotifyModalGateHeadline">Locked Under Pace Plot PRO</span>
+            </span>
+            <span id="spotifyModalGateBadge" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">7-Day Free Trial</span>
+          </div>
+          <p id="spotifyModalGateDesc" class="text-[11px] text-stone-300 leading-snug">
+            Start your 7-day free trial or upgrade to Pace Plot PRO to unlock Spotify Web API connection, live HUD playback controls, and BPM cadence matching.
+          </p>
+          <div class="flex items-center gap-2 pt-0.5">
+            <button id="btnSpotifyGateStartTrial" class="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-stone-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer">
+              <i class="fa-solid fa-gift"></i>
+              <span>Start 7-Day Free Trial</span>
+            </button>
+            <button id="btnSpotifyGateOpenPaywall" class="py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer">
+              <i class="fa-solid fa-crown"></i>
+              <span>PRO Plans</span>
+            </button>
+          </div>
         </div>
 
         <!-- Spotify Account Connection Card -->
@@ -1764,11 +1770,221 @@
         </div>
       </div>
     </div>
+
+    <!-- ========================================================= -->
+    <!-- UNIFIED ROUTE, MAP & APP SETTINGS MODAL DRAWER            -->
+    <!-- ========================================================= -->
+    <div id="modalAppSettings" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+      <div class="bg-cream dark:bg-stone-900 border-t sm:border border-stone-200 dark:border-stone-700/80 text-stone-900 dark:text-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl relative max-h-[88vh] overflow-y-auto space-y-4">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-terracotta/15 text-terracotta border border-terracotta/30 flex items-center justify-center text-base">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-stone-900 dark:text-white">Route & Map Settings</h3>
+              <p class="text-[11px] text-stone-500 dark:text-stone-400">Customize distance, target pace, terrain layers & audio</p>
+            </div>
+          </div>
+          <button id="btnCloseSettingsModal" class="w-7 h-7 rounded-full bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white flex items-center justify-center transition cursor-pointer" title="Close Settings">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- SECTION 1: Route & Pace Customization -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-route text-terracotta"></i>
+              <span>Route & Pace Calibration</span>
+            </span>
+            <button id="btnGenerateAiRoute" class="py-1 px-2.5 rounded-lg bg-terracotta/10 hover:bg-terracotta/20 text-terracotta font-extrabold text-[11px] flex items-center gap-1 transition cursor-pointer">
+              <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+              <span>Re-Map AI Loop</span>
+            </button>
+          </div>
+
+          <!-- Custom Distance Slider -->
+          <div id="customSliderContainer" class="pt-1">
+            <div class="flex justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+              <span>Custom Target Distance:</span>
+              <span id="targetDistanceDisplay" class="font-bold font-mono text-terracotta">3.1 miles (5K)</span>
+            </div>
+            <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Target Pace Coach Segmented Selector -->
+          <div class="pt-2 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+              <span>Target Pace Coach:</span>
+              <span id="targetPaceDisplay" class="font-bold font-mono text-terracotta text-xs">8'30" /mi (Base)</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 bg-stone-100 dark:bg-stone-900/80 p-0.5 rounded-xl text-xs font-bold text-center">
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="15:00" data-label="Walk">
+                Walk 15'
+              </button>
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="9:45" data-label="Easy">
+                Easy 9'45"
+              </button>
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[11px] cursor-pointer" data-pace="8:30" data-label="Base">
+                Base 8'30"
+              </button>
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="7:30" data-label="Tempo">
+                Tempo 7'30"
+              </button>
+            </div>
+          </div>
+
+          <!-- Surface & Safety Filters -->
+          <div class="pt-2 border-t border-stone-100 dark:border-stone-700/70 space-y-2">
+            <div class="text-xs font-semibold text-stone-700 dark:text-stone-300">Surface & Lighting Priority:</div>
+            <div class="grid grid-cols-3 gap-1.5 text-xs">
+              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-terracotta bg-terracotta text-white font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="trail">
+                <i class="fa-solid fa-tree text-xs"></i>
+                <span class="text-[10px]">Greenway</span>
+              </button>
+              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="road">
+                <i class="fa-solid fa-road text-xs"></i>
+                <span class="text-[10px]">Quiet Roads</span>
+              </button>
+              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="lit">
+                <i class="fa-solid fa-lightbulb text-xs"></i>
+                <span class="text-[10px]">Well-Lit Only</span>
+              </button>
+            </div>
+
+            <!-- Route Safety Verification Metrics -->
+            <div class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 pt-1 px-0.5">
+              <span id="metricSidewalk" class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                <i class="fa-solid fa-check text-xs"></i> 98% Sidewalks
+              </span>
+              <span id="metricLit" class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
+                <i class="fa-solid fa-bolt text-xs"></i> 100% Lit Streets
+              </span>
+              <span id="metricGain" class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold text-[11px]">
+                <i class="fa-solid fa-mountain text-xs"></i> +42 ft Gain
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: Map Layers & Display -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
+          <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-layer-group text-terracotta"></i>
+            <span>Map Layers & Canvas Controls</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <button id="btnToggleSatellite" class="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/70 hover:border-terracotta text-stone-700 dark:text-stone-200 flex flex-col items-center justify-center gap-1 transition cursor-pointer" title="Toggle Satellite / Roadmap">
+              <i class="fa-solid fa-satellite text-sm text-sky-500"></i>
+              <span class="text-[11px] font-bold">Satellite</span>
+              <span id="settingsSatelliteStatus" class="text-[9px] font-mono text-stone-400">Roadmap</span>
+            </button>
+
+            <button id="btnToggleSafetyHeatmap" class="p-2.5 rounded-xl border border-terracotta/40 bg-terracotta/10 hover:border-terracotta text-stone-800 dark:text-stone-100 flex flex-col items-center justify-center gap-1 transition cursor-pointer" title="Toggle Safety Corridor Glow">
+              <i class="fa-solid fa-shield-halved text-sm text-terracotta"></i>
+              <span class="text-[11px] font-bold">Safety Glow</span>
+              <span id="settingsHeatmapStatus" class="text-[9px] font-mono text-emerald-500 font-bold">Active</span>
+            </button>
+
+            <button id="btnMaximizeMap" class="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/70 hover:border-terracotta text-stone-700 dark:text-stone-200 flex flex-col items-center justify-center gap-1 transition cursor-pointer" title="Minimize Bottom Drawer for Full Map">
+              <i class="fa-solid fa-expand text-sm text-amber-500"></i>
+              <span class="text-[11px] font-bold">Full Map</span>
+              <span id="settingsSheetStatus" class="text-[9px] font-mono text-stone-400">Expanded</span>
+            </button>
+          </div>
+
+          <!-- Map Gesture Tip (Moved off the map canvas to keep map clean) -->
+          <div id="mapTapHint" class="p-2.5 rounded-xl bg-stone-100 dark:bg-stone-900/80 border border-stone-200/80 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-300 flex items-center gap-2">
+            <i class="fa-solid fa-hand-pointer text-terracotta text-xs shrink-0"></i>
+            <span><strong>Pro Tip:</strong> Long-press anywhere on the map to drop a custom Start Line or Waypoint pin.</span>
+          </div>
+        </div>
+
+        <!-- SECTION 3: Appearance, Audio & Connected Services -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
+          <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-sliders text-terracotta"></i>
+            <span>Appearance, Audio & Integrations</span>
+          </div>
+
+          <!-- Persistent Theme Toggle Row -->
+          <div class="flex items-center justify-between py-1">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-900 text-terracotta flex items-center justify-center text-xs">
+                <i id="appThemeIcon" class="fa-solid fa-moon"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white">Interface Theme</div>
+                <p id="settingsThemeStatusLabel" class="text-[10px] text-stone-500 dark:text-stone-400">Persisted in LocalStorage</p>
+              </div>
+            </div>
+            <button id="btnAppThemeToggle" class="px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-800 dark:text-stone-200 transition cursor-pointer">
+              Switch Theme
+            </button>
+          </div>
+
+          <!-- Voice Guidance Toggle Row -->
+          <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-900 text-terracotta flex items-center justify-center text-xs">
+                <i id="audioIcon" class="fa-solid fa-volume-high"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white">Spoken Turn Guidance</div>
+                <p id="settingsVoiceStatusLabel" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Voice Active</p>
+              </div>
+            </div>
+            <button id="audioVoiceToggle" class="px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-800 dark:text-stone-200 transition cursor-pointer">
+              Mute / Unmute
+            </button>
+          </div>
+
+          <!-- Spotify Running Audio Row -->
+          <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-[#1DB954]/15 text-[#1DB954] flex items-center justify-center text-sm">
+                <i class="fa-brands fa-spotify"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
+                  <span>Spotify Running Audio</span>
+                  <span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase">PRO</span>
+                </div>
+                <p class="text-[10px] text-stone-500 dark:text-stone-400">Playlists, BPM sync & audio ducking</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button id="btnTopBarSpotify" class="px-3 py-1.5 rounded-xl bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 text-xs font-extrabold transition cursor-pointer">
+                Open Player
+              </button>
+              <button id="btnMapQuickSpotify" class="hidden" title="Spotify Quick Trigger"></button>
+            </div>
+          </div>
+
+          <!-- Safety Protocol & Health Status Footer Row -->
+          <div class="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-700/70">
+            <button id="btnSettingsSafetyDisclaimer" class="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-shield-halved text-terracotta"></i>
+              <span>Pedestrian Safety Protocol</span>
+            </button>
+            <button id="healthStatusIndicator" class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-heart-pulse text-[9px]"></i>
+              <span>Health Sync Active</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </main>
 
   <!-- Prototype Footnote -->
-  <footer class="mt-4 text-center text-xs text-stone-400 max-w-md">
-    <p><strong class="text-stone-200">Pace Plot</strong> interactive Android client prototype for Stride Circuit LLC.</p>
+  <footer class="mt-4 text-center text-xs text-stone-600 dark:text-stone-400 max-w-md transition-colors duration-200">
+    <p><strong class="text-stone-900 dark:text-stone-200">Pace Plot</strong> interactive Android client prototype for Stride Circuit LLC.</p>
     <p class="text-[11px] text-stone-500 mt-0.5">Click <strong>"Start Voice Nav"</strong> to experience turn-by-turn spoken audio & live GPS runner simulation.</p>
   </footer>
 

@@ -331,8 +331,10 @@ async function generateCodeChallenge(codeVerifier) {
 export async function initiateSpotifyOAuthPopup(callbacks = {}) {
   try {
     const codeVerifier = generateRandomString(64);
+    const oauthState = generateRandomString(32);
     try {
       localStorage.setItem(SPOTIFY_VERIFIER_KEY, codeVerifier);
+      localStorage.setItem(SPOTIFY_STATE_KEY, oauthState);
     } catch (_) {}
 
     const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -342,7 +344,7 @@ export async function initiateSpotifyOAuthPopup(callbacks = {}) {
     const queryParams = new URLSearchParams({
       redirect_uri: redirectUri,
       code_challenge: codeChallenge,
-      state: 'paceplot_spotify_oauth'
+      state: oauthState
     });
     if (customClientId) {
       queryParams.set('client_id', customClientId);
@@ -385,8 +387,13 @@ export async function initiateSpotifyOAuthPopup(callbacks = {}) {
   }
 }
 
-export async function handleSpotifyOAuthCallbackCode(code) {
+export async function handleSpotifyOAuthCallbackCode(code, returnedState = '') {
   if (!code) return false;
+  const expectedState = localStorage.getItem(SPOTIFY_STATE_KEY) || '';
+  if (expectedState && returnedState && expectedState !== returnedState) {
+    console.warn('Spotify OAuth state mismatch — rejecting callback');
+    return false;
+  }
   const redirectUri = `${window.location.origin}/auth/callback`;
   const codeVerifier = localStorage.getItem(SPOTIFY_VERIFIER_KEY) || '';
   const customClientId = getCustomSpotifyClientId();
@@ -924,6 +931,19 @@ export function syncPlaylistToPaceSeconds(paceSeconds) {
   return getActivePlaylist();
 }
 
+export async function pausePlaybackForPaywall() {
+  if (!isPlaying) {
+    notifyListeners();
+    return;
+  }
+  isPlaying = false;
+  stopLocalProgressAndSynth();
+  if (isSpotifyConnected()) {
+    spotifyApiFetch('/me/player/pause', { method: 'PUT' }).catch(() => {});
+  }
+  notifyListeners();
+}
+
 // Initialize OAuth postMessage listener & restore session if token exists
 export function initSpotifyController(onConnectedCallback = null) {
   window.addEventListener('message', async (event) => {
@@ -932,7 +952,7 @@ export function initSpotifyController(onConnectedCallback = null) {
       return;
     }
     if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.provider === 'spotify') {
-      const success = await handleSpotifyOAuthCallbackCode(event.data.code);
+      const success = await handleSpotifyOAuthCallbackCode(event.data.code, event.data.state || '');
       if (success && typeof onConnectedCallback === 'function') {
         onConnectedCallback(getSpotifyPlayerState());
       }

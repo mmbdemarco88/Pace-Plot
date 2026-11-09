@@ -2,13 +2,17 @@
   "entities": {
     "UserProfile": {
       "title": "UserProfile",
-      "description": "User profile information",
+      "description": "User profile information and subscription status",
       "type": "object",
       "properties": {
         "displayName": { "type": "string", "maxLength": 100 },
         "email": { "type": "string", "maxLength": 150 },
         "photoURL": { "type": "string", "maxLength": 500 },
-        "createdAt": { "type": "string" }
+        "subscriptionStatus": { "type": "string", "maxLength": 30 },
+        "tier": { "type": "string", "maxLength": 20 },
+        "trialStartedAt": { "type": "number" },
+        "trialExpiresAt": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 }
       },
       "required": ["email"]
     },
@@ -23,7 +27,17 @@
         "safetyScore": { "type": "string", "maxLength": 10 },
         "locationName": { "type": "string", "maxLength": 150 },
         "elevation": { "type": "string", "maxLength": 50 },
-        "createdAt": { "type": "string" }
+        "pathCoordinates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "maxLength": 64 }
       },
       "required": ["userId", "title", "distance"]
     },
@@ -36,7 +50,7 @@
         "name": { "type": "string", "maxLength": 100 },
         "phone": { "type": "string", "maxLength": 30 },
         "role": { "type": "string", "maxLength": 20 },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string", "maxLength": 64 }
       },
       "required": ["userId", "name", "phone"]
     },
@@ -52,7 +66,7 @@
         "avgPace": { "type": "string", "maxLength": 20 },
         "avgHeartRate": { "type": "number" },
         "calories": { "type": "number" },
-        "completedAt": { "type": "string" }
+        "completedAt": { "type": "string", "maxLength": 64 }
       },
       "required": ["userId", "distance", "durationSeconds"]
     }
