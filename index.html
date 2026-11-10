@@ -171,14 +171,13 @@
         <span class="font-bold tracking-tight text-stone-900 dark:text-white">Pace Plot</span>
         <span class="text-xs text-stone-500 dark:text-stone-400 ml-1">by Stride Circuit LLC</span>
       </div>
-      <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">Google Maps Platform</span>
     </div>
 
     <!-- Quick Presets -->
     <div class="flex items-center gap-2">
-      <label for="locationPreset" class="text-xs text-stone-500 dark:text-stone-400 hidden sm:inline">Location:</label>
+      <label for="locationPreset" class="text-xs text-stone-500 dark:text-stone-400 hidden sm:inline">Featured Hubs:</label>
       <select id="locationPreset" class="bg-stone-100 dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded px-2.5 py-1 text-xs text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-terracotta">
-        <option value="parma">Parma / West Creek (HQ)</option>
+        <option value="parma">Parma / West Creek, OH</option>
         <option value="centralpark">Central Park, NYC</option>
         <option value="austin">Lady Bird Lake, Austin</option>
         <option value="chicago">Lakefront Trail, Chicago</option>
@@ -187,9 +186,9 @@
 
     <!-- Viewport & Mode Toggles -->
     <div class="flex items-center gap-2">
-      <!-- Install PWA / Play Store Ready Button -->
-      <button id="btnTopInstallPwa" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center gap-1.5 transition font-bold shadow-sm cursor-pointer" title="Install Pace Plot App or View Play Store TWA Status">
-        <i class="fa-brands fa-android"></i>
+      <!-- Install App Button -->
+      <button id="btnTopInstallPwa" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center gap-1.5 transition font-bold shadow-sm cursor-pointer" title="Install Pace Plot App">
+        <i class="fa-solid fa-mobile-screen-button"></i>
         <span id="topInstallPwaLabel">Install App</span>
       </button>
 
@@ -275,7 +274,7 @@
       <section id="tabPlanner" class="tab-content absolute inset-0 flex flex-col z-20">
         
         <!-- Interactive Map Container (Expansive, uncluttered top portion) -->
-        <div id="mapWrapper" class="flex-1 relative w-full h-full min-h-[300px] overflow-hidden bg-stone-200 dark:bg-stone-800">
+        <div id="mapWrapper" class="flex-1 relative w-full h-full min-h-[210px] overflow-hidden bg-stone-200 dark:bg-stone-800">
           <div id="map"></div>
           
           <!-- Live Location & Place Search Bar -->
@@ -379,10 +378,10 @@
                       <i id="hudWeatherIcon" class="fa-solid fa-cloud-sun text-amber-400 text-[9px]"></i>
                       <span id="hudWeatherText">64°F · 8% rain</span>
                     </span>
-                    <button id="btnHudToggleSimMode" type="button" class="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg hover:bg-emerald-500/25 transition cursor-pointer" title="Tap to switch between Live Hardware GPS and Indoor Route Preview Simulation">
+                    <span id="btnHudToggleSimMode" class="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg" title="Live Hardware GPS Tracking Active">
                       <i id="hudGpsModeIcon" class="fa-solid fa-satellite-dish text-[9px]"></i>
                       <span id="hudGpsModeText">Live GPS</span>
-                    </button>
+                    </span>
                   </div>
                 </div>
                 <h3 id="navInstructionText" class="text-sm font-extrabold text-white truncate mt-0.5 cursor-pointer hover:text-amber-300 transition" title="Click to repeat audio direction">Turn right onto West Creek Trail</h3>
@@ -535,7 +534,7 @@
         </div>
 
         <!-- Condensed Bottom Planning Sheet (Maximum Map Breathing Room) -->
-        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl px-3.5 pt-2 pb-3 shadow-2xl z-30 transition-all duration-300 flex-shrink-0 max-h-[50%] overflow-y-auto">
+        <div id="planningSheet" class="bg-cream dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 rounded-t-3xl px-3 pt-1.5 pb-2 shadow-2xl z-30 transition-all duration-300 flex-shrink-0 max-h-[64%] overflow-y-auto select-text">
           
           <!-- Clickable Sheet Drag Handle / Toggle Bar -->
           <div id="sheetDragHandle" class="w-full flex items-center justify-center py-0.5 cursor-pointer group" title="Tap to collapse or expand route drawer">
@@ -543,8 +542,8 @@
           </div>
 
           <!-- Compact / Minimized Sheet Bar (Shown when collapsed) -->
-          <div id="sheetCompactBar" class="hidden flex items-center justify-between gap-2 pt-1 pb-0.5">
-            <div class="min-w-0 flex-1">
+          <div id="sheetCompactBar" class="hidden flex items-center justify-between gap-2 pt-1 pb-0.5 select-text">
+            <div class="min-w-0 flex-1 cursor-pointer" id="compactHeaderSelectArea" title="Tap to expand route details">
               <div class="flex items-center gap-1.5 text-[11px] text-stone-500">
                 <span class="font-bold text-terracotta">9.8 Safety</span>
                 <span>·</span>
@@ -552,7 +551,7 @@
                 <span>·</span>
                 <span>+42 ft</span>
               </div>
-              <h3 id="compactRouteTitle" class="text-xs font-bold text-stone-800 dark:text-stone-200 truncate">West Creek Greenway Safe Loop</h3>
+              <h3 id="compactRouteTitle" class="text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-200 break-words leading-snug select-text">6611 Ridge Rd, Parma, OH 44129 · West Creek Greenway Safe Loop</h3>
             </div>
             <div class="flex items-center gap-1.5 flex-shrink-0">
               <button id="compactBtnStartNav" class="px-3 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center gap-1 shadow-sm transition cursor-pointer">
@@ -566,73 +565,64 @@
           </div>
 
           <!-- Streamlined Full Planning Controls -->
-          <div id="sheetFullContent" class="space-y-2 pt-1">
-            <!-- 1. Route Summary Row -->
-            <div class="flex items-center justify-between">
-              <div class="min-w-0 flex-1 pr-2">
-                <div class="flex items-center gap-1.5 text-[10px] font-semibold text-stone-500 dark:text-stone-400">
-                  <span class="text-emerald-600 dark:text-emerald-400 font-bold"><i class="fa-solid fa-shield-halved text-[9px] mr-0.5"></i>9.8 Safety</span>
+          <div id="sheetFullContent" class="space-y-1.5 pt-0.5 select-text">
+            <!-- 1. Larger, Full-Width Selectable Route Summary & Full Address Card -->
+            <div id="routeHeaderSummaryRow" class="flex flex-col gap-1 rounded-2xl p-2.5 sm:p-3 bg-white dark:bg-stone-800/90 border border-stone-200/90 dark:border-stone-700/80 shadow-sm hover:border-terracotta/50 transition cursor-pointer select-text" title="Click or select address · Tap to center on starting address or view turn details">
+              <div class="flex items-center justify-between gap-2 select-text">
+                <div class="flex items-center flex-wrap gap-1.5 text-[11px] font-semibold text-stone-500 dark:text-stone-400 select-text">
+                  <span class="text-emerald-600 dark:text-emerald-400 font-extrabold"><i class="fa-solid fa-shield-halved text-[10px] mr-0.5"></i>9.8 Safety</span>
                   <span>·</span>
                   <span id="routeElevationKicker">+42 ft</span>
                   <span>·</span>
                   <span id="estDurationText" class="text-stone-500 dark:text-stone-400">~26 min at 8'30"</span>
                 </div>
-                <h2 id="routeTitle" class="text-sm font-extrabold text-stone-900 dark:text-white truncate">West Creek Greenway Safe Loop</h2>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <div id="routeMileageBadge" class="text-base sm:text-lg font-black font-mono text-stone-900 dark:text-white leading-none select-text">3.10 <span class="text-[11px] font-sans font-semibold text-stone-500">mi</span></div>
+                  <button id="btnToggleSheet" class="w-6 h-6 rounded-lg bg-stone-100 dark:bg-stone-700/80 hover:bg-stone-200 text-stone-500 dark:text-stone-300 flex items-center justify-center transition cursor-pointer" title="Minimize Sheet">
+                    <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-[11px]"></i>
+                  </button>
+                </div>
               </div>
-              <div class="flex items-center gap-1.5 flex-shrink-0">
-                <div id="routeMileageBadge" class="text-base font-black font-mono text-stone-900 dark:text-white leading-none">3.10 <span class="text-[10px] font-sans font-semibold text-stone-500">mi</span></div>
-                <button id="btnToggleSheet" class="w-7 h-7 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition cursor-pointer" title="Minimize Sheet">
-                  <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
-                </button>
+              <div class="w-full select-text">
+                <h2 id="routeTitle" class="text-sm sm:text-base font-black text-stone-900 dark:text-white break-words leading-snug select-text">6611 Ridge Rd, Parma, OH 44129</h2>
+                <p id="selectedFullAddressText" class="text-xs font-bold text-terracotta dark:text-amber-400 break-words leading-snug select-text mt-0.5">West Creek Greenway Safe Loop · Option 1 of 4</p>
               </div>
             </div>
 
-            <!-- 2. Loop Distance Preset Chips + Route Options Button -->
-            <div class="flex items-center gap-1.5">
-              <div class="grid grid-cols-4 gap-1 flex-1 bg-stone-100 dark:bg-stone-800/80 p-0.5 rounded-xl text-xs font-bold text-center">
-                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="1.5">
-                  1.5 mi
+            <!-- 2. Condensed Single-Row Toolbar: Distance Presets + Redo + Save + Options -->
+            <div class="flex items-center gap-1">
+              <div class="grid grid-cols-4 gap-0.5 flex-1 bg-stone-100 dark:bg-stone-800/90 p-0.5 rounded-xl text-center">
+                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[10px] font-extrabold whitespace-nowrap cursor-pointer" data-dist="1.5" title="1.5 Mile Loop">
+                  1.5m
                 </button>
-                <button class="dist-preset-btn py-1 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[11px] cursor-pointer" data-dist="3.1">
-                  5K (3.1)
+                <button class="dist-preset-btn py-1 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[10px] font-extrabold whitespace-nowrap cursor-pointer" data-dist="3.1" title="5K (3.1 Mile) Loop">
+                  5K
                 </button>
-                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="4.5">
-                  4.5 mi
+                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[10px] font-extrabold whitespace-nowrap cursor-pointer" data-dist="4.5" title="4.5 Mile Loop">
+                  4.5m
                 </button>
-                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-dist="6.2">
-                  10K (6.2)
+                <button class="dist-preset-btn py-1 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[10px] font-extrabold whitespace-nowrap cursor-pointer" data-dist="6.2" title="10K (6.2 Mile) Loop">
+                  10K
                 </button>
               </div>
-              <button id="btnSheetOpenSettings" class="px-2.5 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[11px] text-stone-700 dark:text-stone-200 hover:border-terracotta font-bold flex items-center gap-1 transition cursor-pointer shrink-0" title="Custom Distance, Target Pace, Surface Filters & Map Settings">
-                <i class="fa-solid fa-sliders text-terracotta text-[10px]"></i>
+              <button id="btnRedoChoices" class="px-2 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-terracotta hover:border-terracotta text-[10px] font-extrabold flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0 whitespace-nowrap" title="Generate 4 fresh alternative routes">
+                <i class="fa-solid fa-arrows-rotate text-[9px]"></i>
+                <span>Redo</span>
+              </button>
+              <button id="btnSaveRouteToCloud" class="px-2 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 hover:border-terracotta text-[10px] font-bold flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap" title="Save Active Route to Cloud">
+                <i class="fa-solid fa-cloud-arrow-up text-terracotta text-[9px]"></i>
+                <span id="saveRouteToCloudLabel">Save</span>
+              </button>
+              <button id="btnSheetOpenSettings" class="px-2 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[10px] text-stone-700 dark:text-stone-200 hover:border-terracotta font-bold flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap" title="Custom Distance, Target Pace, Surface Filters & Map Settings">
+                <i class="fa-solid fa-sliders text-terracotta text-[9px]"></i>
                 <span>Options</span>
               </button>
+              <span id="routeChoicesBadge" class="hidden">4 Options</span>
             </div>
 
-            <!-- 3. AI Safe Route Options (Compact Horizontal Carousel + Inline Redo & Cloud Save) -->
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-1.5">
-                  <i class="fa-solid fa-route text-emerald-500 text-[10px]"></i>
-                  <span class="text-[10px] font-black uppercase tracking-wider text-stone-700 dark:text-stone-300">Routes</span>
-                  <span id="routeChoicesBadge" class="text-[10px] font-mono tabular-nums font-bold text-stone-500 dark:text-stone-400">· 4 Options</span>
-                </div>
-                <div class="flex items-center gap-2.5">
-                  <button id="btnSaveRouteToCloud" class="text-stone-600 dark:text-stone-300 hover:text-terracotta text-[10px] font-bold flex items-center gap-1 transition cursor-pointer" title="Save Active Route to Cloud">
-                    <i class="fa-solid fa-cloud-arrow-up text-terracotta text-[10px]"></i>
-                    <span id="saveRouteToCloudLabel">Save</span>
-                  </button>
-                  <button id="btnRedoChoices" class="text-terracotta hover:text-terracotta-hover text-[10px] font-extrabold flex items-center gap-1 transition active:scale-95 cursor-pointer" title="Generate fresh alternative routes">
-                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
-                    <span>Redo</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Route Choice Horizontal Carousel -->
-              <div id="routeChoicesList" class="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none snap-x">
-                <!-- Rendered dynamically as horizontal snap cards -->
-              </div>
+            <!-- 3. Condensed Route Choice Horizontal Carousel -->
+            <div id="routeChoicesList" class="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none snap-x">
+              <!-- Rendered dynamically as compact horizontal snap cards -->
             </div>
 
             <!-- 4. Collapsible Elevation & Turns Drawer (Clean & Focused) -->
@@ -746,33 +736,33 @@
           </div>
         </div>
 
-        <!-- Live Simulated SMS Delivery Preview -->
+        <!-- Live SMS Beacon Dispatch -->
         <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-2.5">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
               <i class="fa-solid fa-mobile-screen-button text-terracotta"></i>
-              <span>Live SMS Beacon Preview</span>
+              <span>Live SMS Beacon Dispatch</span>
             </div>
             <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
               <i class="fa-solid fa-circle-check"></i> Automated Link
             </span>
           </div>
 
-          <!-- Message Bubble Mockup -->
+          <!-- Message Dispatch Card -->
           <div class="p-3 bg-stone-50 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs space-y-2 font-sans">
             <div class="flex items-center justify-between text-[10px] text-stone-400">
               <span class="font-bold text-stone-600 dark:text-stone-300">Stride SafeGuard SMS Dispatch</span>
               <span>Live Beacon</span>
             </div>
             <p class="text-stone-800 dark:text-stone-200 leading-relaxed text-[11px]">
-              "🏃 Bryan started a safe run on <strong class="text-terracotta">West Creek Greenway</strong>. Track live GPS coordinates, current pace, and phone battery (86%):"
+              "🏃 Out on a safe run on <strong id="smsPreviewRouteName" class="text-terracotta">West Creek Greenway</strong>. Track live GPS coordinates, current pace, and phone battery:"
             </p>
             <div class="p-2 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-terracotta font-mono font-bold text-[11px] truncate">
               https://paceplot.app/track/stride-safe-7b49
             </div>
             <div class="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
-              <span>Est. Return: <strong>10:08 AM</strong></span>
-              <span>Battery: <strong>86%</strong></span>
+              <span>Status: <strong>Ready to Share</strong></span>
+              <span>GPS: <strong>Active</strong></span>
             </div>
           </div>
 
@@ -790,7 +780,7 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Emergency Contacts</h3>
-              <span id="contactsSyncStatus" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">Local Demo</span>
+              <span id="contactsSyncStatus" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300">Saved on Device</span>
             </div>
             <button id="btnAddContactModal" class="text-xs font-bold text-terracotta hover:underline flex items-center gap-1">
               <i class="fa-solid fa-plus text-[10px]"></i> Add Contact
@@ -857,7 +847,7 @@
 
           <button id="btnTriggerTestSOS" class="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-2 transition">
             <i class="fa-solid fa-triangle-exclamation"></i>
-            <span>Test 45s Emergency SOS Countdown</span>
+            <span>Activate Emergency SOS Countdown (45s)</span>
           </button>
         </div>
 
@@ -1091,7 +1081,7 @@
                   <div class="flex items-center gap-1.5">
                     <i class="fa-solid fa-chart-column text-terracotta text-xs"></i>
                     <h4 class="text-[11px] font-extrabold uppercase tracking-wider text-stone-800 dark:text-stone-100">
-                      Weekly Time in Zones (D3.js)
+                      Weekly Time in Heart Rate Zones
                     </h4>
                   </div>
                   <p class="text-[10px] text-stone-500 dark:text-stone-400">
@@ -1624,18 +1614,10 @@
             <span id="btnSubscribeLabel">Subscribe to Annual PRO ($49.99/yr)</span>
           </button>
 
-          <!-- Interactive Trial Expiration Test Button (Visible while Free Trial is Active) -->
-          <button id="btnExpireTrialNow" class="hidden w-full py-2 px-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer" title="Fast-forward trial timer to verify paywall lock">
-            <i class="fa-solid fa-Forward-fast text-[10px]"></i>
-            <span>Simulate Trial Expiration (Lock in Paywall Now)</span>
-          </button>
-
           <div class="flex items-center justify-center gap-3 text-[10px] text-stone-400 pt-0.5">
             <span>Cancel anytime</span>
             <span>•</span>
             <button id="btnRestorePurchases" class="hover:text-white underline cursor-pointer">Restore Purchase</button>
-            <span>•</span>
-            <button id="btnResetTrialDemo" class="hidden text-amber-400 hover:underline cursor-pointer">Reset Trial Demo</button>
           </div>
         </div>
 
@@ -1801,10 +1783,10 @@
             </button>
           </div>
 
-          <!-- Expandable Developer / Custom Client ID Configuration (Shown when needed or toggled) -->
+          <!-- Optional Custom Spotify Account Connection Settings -->
           <div class="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-stone-800/80">
-            <span>Redirect URI: <code id="spotifyRedirectUriDisplay" class="text-stone-300 font-mono">/auth/callback</code></span>
-            <button id="btnToggleSpotifyConfigForm" class="text-[#1DB954] hover:underline font-semibold cursor-pointer">API Settings</button>
+            <span>Personal Playlists & BPM Cadence Sync</span>
+            <button id="btnToggleSpotifyConfigForm" class="text-[#1DB954] hover:underline font-semibold cursor-pointer">Connection Options</button>
           </div>
 
           <div id="spotifyConfigForm" class="hidden pt-2 border-t border-stone-800 space-y-2 text-xs">
@@ -2082,45 +2064,30 @@
           </div>
         </div>
 
-        <!-- SECTION 4: Android Play Store & PWA Diagnostics -->
+        <!-- SECTION 4: Home Screen App & Route Export -->
         <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
           <div class="flex items-center justify-between">
             <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
-              <i class="fa-brands fa-google-play text-emerald-500"></i>
-              <span>Android Play Store & PWA Diagnostics</span>
+              <i class="fa-solid fa-mobile-screen-button text-terracotta"></i>
+              <span>Home Screen App & Offline Access</span>
             </div>
-            <span id="pwaDiagnosticStatusBadge" class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold">
-              Checking...
+            <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-bold">
+              Offline Ready
             </span>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 text-[10px]">
-            <div class="p-2 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200/70 dark:border-stone-700/70">
-              <div class="text-stone-400 font-semibold">Web App Manifest</div>
-              <div id="pwaManifestCheckText" class="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
-                /manifest.json · OK
-              </div>
-            </div>
-            <div class="p-2 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200/70 dark:border-stone-700/70">
-              <div class="text-stone-400 font-semibold">Service Worker</div>
-              <div id="pwaSwCheckText" class="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
-                /sw.js · Active
-              </div>
-            </div>
-          </div>
-
-          <p class="text-[10px] text-stone-500 dark:text-stone-400 leading-snug">
-            Package ID: <strong class="font-mono text-stone-800 dark:text-stone-200">com.stridecircuit.paceplot</strong> (Free app with In-App PRO Subscriptions). Note: AI Studio preview URLs require publishing via <strong>Deploy to Cloud Run</strong> before external scanners like PWABuilder can crawl without auth redirects.
+          <p class="text-[11px] text-stone-600 dark:text-stone-300 leading-snug">
+            Install <strong>Pace Plot</strong> to your device home screen for instant full-screen launch, offline route caching, and voice turn-by-turn navigation.
           </p>
 
           <div class="flex gap-2 pt-0.5">
-            <button id="btnSettingsInstallPwa" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+            <button id="btnSettingsInstallPwa" type="button" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
               <i class="fa-solid fa-download text-[11px]"></i>
-              <span id="settingsInstallPwaLabel">Install App on Device</span>
+              <span id="settingsInstallPwaLabel">Install Pace Plot App</span>
             </button>
-            <button id="btnDownloadTwaBundle" type="button" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer" title="Download Bubblewrap TWA Manifest Config for Play Store">
-              <i class="fa-brands fa-google-play text-emerald-500"></i>
-              <span>TWA Config</span>
+            <button id="btnSettingsExportGpx" type="button" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer" title="Download Active Route as GPX">
+              <i class="fa-solid fa-route text-terracotta"></i>
+              <span>Export GPX</span>
             </button>
           </div>
         </div>

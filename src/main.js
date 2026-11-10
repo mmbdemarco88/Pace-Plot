@@ -87,7 +87,8 @@ import {
   computeLiveGpsPace,
   evaluateGpsFixMovement,
   parseBleHeartRateMeasurement,
-  fetchStreetSnappedLoopFromOsrm
+  fetchStreetSnappedLoopFromOsrm,
+  formatFullPhotonAddress
 } from './gpsEngine.js';
 
 // HTML Entity Escaping Helper (DOM XSS Defense)
@@ -126,7 +127,9 @@ window.addEventListener('gmp-quota-exceeded', () => {
 const routes = {
   parma: {
     title: "West Creek Greenway Safe Loop",
-    locationName: "Parma, OH (HQ)",
+    flavorTitle: "West Creek Greenway Safe Loop",
+    locationName: "6611 Ridge Rd, Parma, OH 44129",
+    fullAddress: "6611 Ridge Rd, Parma, OH 44129",
     center: { lat: 41.3857, lng: -81.7058 },
     zoom: 15,
     distance: 3.10,
@@ -156,7 +159,9 @@ const routes = {
   },
   centralpark: {
     title: "Central Park Reservoir Perimeter",
-    locationName: "New York, NY",
+    flavorTitle: "Central Park Reservoir Perimeter",
+    locationName: "Central Park Reservoir, 5th Ave & E 90th St, New York, NY 10128",
+    fullAddress: "Central Park Reservoir, 5th Ave & E 90th St, New York, NY 10128",
     center: { lat: 40.785091, lng: -73.968285 },
     zoom: 15,
     distance: 4.00,
@@ -184,7 +189,9 @@ const routes = {
   },
   austin: {
     title: "Lady Bird Lake Boardwalk Loop",
-    locationName: "Austin, TX",
+    flavorTitle: "Lady Bird Lake Boardwalk Loop",
+    locationName: "1820 S Lakeshore Blvd, Austin, TX 78741",
+    fullAddress: "1820 S Lakeshore Blvd, Austin, TX 78741",
     center: { lat: 30.2505, lng: -97.7340 },
     zoom: 15,
     distance: 5.00,
@@ -210,7 +217,9 @@ const routes = {
   },
   chicago: {
     title: "Lakefront Trail & Museum Campus",
-    locationName: "Chicago, IL",
+    flavorTitle: "Lakefront Trail & Museum Campus",
+    locationName: "1400 S DuSable Lake Shore Dr, Chicago, IL 60605",
+    fullAddress: "1400 S DuSable Lake Shore Dr, Chicago, IL 60605",
     center: { lat: 41.8660, lng: -87.6150 },
     zoom: 15,
     distance: 3.50,
@@ -504,59 +513,27 @@ function initServiceWorker() {
       return;
     }
 
-    // Open Settings Modal scrolled to SECTION 4 (Android Play Store & PWA Diagnostics)
     const modalAppSettings = document.getElementById('modalAppSettings');
-    if (modalAppSettings) {
+    if (modalAppSettings && modalAppSettings.classList.contains('hidden')) {
       modalAppSettings.classList.remove('hidden');
-      const diagBadge = document.getElementById('pwaDiagnosticStatusBadge');
-      if (diagBadge) diagBadge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (settingsInstallLabel) {
+      settingsInstallLabel.textContent = 'Use Browser Menu → Add to Home Screen';
+      setTimeout(() => {
+        if (settingsInstallLabel) settingsInstallLabel.textContent = 'Install Pace Plot App';
+      }, 4500);
     }
     playTurnChime();
-    speakInstruction(
-      'PWA Manifest and Service Worker verified for package com.stridecircuit.paceplot. On Android Chrome, tap the browser menu and select Install App, or export the TWA configuration for Google Play Console.'
-    );
   }
 
   if (btnTopInstall) btnTopInstall.addEventListener('click', handleInstallPwaClick);
   if (btnSettingsInstall) btnSettingsInstall.addEventListener('click', handleInstallPwaClick);
 
-  // 4. Export Bubblewrap / Google Play Store TWA Configuration (twa-manifest.json)
-  if (btnDownloadTwa) {
-    btnDownloadTwa.addEventListener('click', () => {
-      const host = window.location.host || 'ais-pre-2pismjncofqbc3fhyd5a44-460005074201.us-east1.run.app';
-      const origin = window.location.origin || `https://${host}`;
-      const twaConfig = {
-        packageId: 'com.stridecircuit.paceplot',
-        host,
-        name: 'Pace Plot',
-        launcherName: 'Pace Plot',
-        display: 'standalone',
-        displayOverride: ['window-controls-overlay', 'tabbed', 'standalone', 'minimal-ui'],
-        themeColor: '#E15A2B',
-        navigationColor: '#0B0C0E',
-        navigationColorDark: '#0B0C0E',
-        navigationDividerColor: '#1C1917',
-        navigationDividerColorDark: '#1C1917',
-        backgroundColor: '#0B0C0E',
-        enableNotifications: true,
-        startUrl: '/',
-        iconUrl: `${origin}/pwa-512x512.png`,
-        maskableIconUrl: `${origin}/pwa-maskable-512x512.png`,
-        webManifestUrl: `${origin}/manifest.json`,
-        fallbackType: 'customtabs',
-        orientation: 'portrait',
-        appVersionName: '1.2.0',
-        appVersionCode: 2
-      };
-      const blob = new Blob([JSON.stringify(twaConfig, null, 2)], { type: 'application/json;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'twa-manifest.json';
-      a.click();
-      URL.revokeObjectURL(url);
-      playTurnChime();
-      speakInstruction('Downloaded Google Play Store Trusted Web Activity configuration for com.stridecircuit.paceplot.');
+  const btnSettingsExportGpx = document.getElementById('btnSettingsExportGpx');
+  if (btnSettingsExportGpx) {
+    btnSettingsExportGpx.addEventListener('click', () => {
+      const btnExportGpx = document.getElementById('btnExportGpx');
+      if (btnExportGpx) btnExportGpx.click();
     });
   }
 }
@@ -1104,8 +1081,8 @@ async function initGoogleMaps() {
       handleMapLongPress(e.latLng);
     });
 
-    // Interactive Tap: Clicking without holding generates loop or loops with waypoint
-    googleMap.addListener('click', (e) => {
+    // Interactive Tap: Clicking without holding generates loop or loops with waypoint and reverse-geocodes full address
+    googleMap.addListener('click', async (e) => {
       if (isLongPressTriggered) {
         isLongPressTriggered = false;
         return;
@@ -1113,12 +1090,35 @@ async function initGoogleMaps() {
       if (!e || !e.latLng) return;
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
-      if (activeWaypointCoords) {
-        generateLoopChoicesWithWaypoint(lat, lng, activeWaypointCoords.lat, activeWaypointCoords.lng, 'Pinned Spot', currentSelectedDistance);
-      } else {
-        generateMultipleLoopChoices(lat, lng, 'Pinned Spot', currentSelectedDistance);
+      let tappedAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      try {
+        const nomRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`);
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          if (nomData && (nomData.address || nomData.display_name)) {
+            tappedAddress = formatFullPhotonAddress(nomData, tappedAddress);
+          }
+        }
+      } catch (_) {
+        try {
+          const revRes = await fetch(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            const props = revData?.features?.[0]?.properties;
+            if (props) {
+              tappedAddress = formatFullPhotonAddress(props, tappedAddress);
+            }
+          }
+        } catch (_e) {}
       }
-      speakInstruction(`Generated safe loops at pinned coordinate.`);
+      const inputSearch = document.getElementById('inputLocationSearch');
+      if (inputSearch) inputSearch.value = tappedAddress;
+      if (activeWaypointCoords) {
+        generateLoopChoicesWithWaypoint(lat, lng, activeWaypointCoords.lat, activeWaypointCoords.lng, tappedAddress, currentSelectedDistance);
+      } else {
+        generateMultipleLoopChoices(lat, lng, tappedAddress, currentSelectedDistance);
+      }
+      zoomMapOntoCoordinate({ lat, lng }, 16);
     });
 
     // Initial resize trigger to ensure tiles fill immediately
@@ -1146,7 +1146,6 @@ function renderRoute(routeData) {
   if (routeGlowPolyline) routeGlowPolyline.setMap(null);
   if (routeCorePolyline) routeCorePolyline.setMap(null);
   if (startMarker) startMarker.map = null;
-  if (runnerMarker) runnerMarker.map = null;
 
   // Safety glow polyline (soft translucent terracotta buffer)
   routeGlowPolyline = new googleMapsLib.Polyline({
@@ -1168,19 +1167,25 @@ function renderRoute(routeData) {
     map: googleMap
   });
 
-  // Start Marker (Terracotta play button pin)
-  if (markerLib && markerLib.AdvancedMarkerElement) {
+  // Start / Selected Address Pin (Anchored at the exact address coordinate with a floating address badge)
+  const exactAddressCoord = routeData.center || routeData.path[0];
+  const fullAddrLabel = routeData.fullAddress || routeData.locationName || routeData.title || 'Start / Finish Line';
+  if (markerLib && markerLib.AdvancedMarkerElement && exactAddressCoord) {
     const startPinElement = document.createElement('div');
+    startPinElement.className = 'relative flex flex-col items-center';
     startPinElement.innerHTML = `
-      <div style="background-color:#C84B1A; width:24px; height:24px; border-radius:50%; border:3px solid #ffffff; box-shadow:0 2px 8px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px;">
+      <div class="mb-1 px-2 py-0.5 rounded-lg bg-stone-950/90 text-white border border-terracotta/80 shadow-lg text-[10px] font-bold max-w-[230px] truncate pointer-events-none">
+        <i class="fa-solid fa-location-dot text-terracotta mr-1"></i>${escapeHtml(fullAddrLabel)}
+      </div>
+      <div style="background-color:#C84B1A; width:26px; height:26px; border-radius:50%; border:3px solid #ffffff; box-shadow:0 2px 10px rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px;">
         <i class="fa-solid fa-play"></i>
       </div>
     `;
 
     startMarker = new markerLib.AdvancedMarkerElement({
       map: googleMap,
-      position: routeData.path[0],
-      title: "Start / Finish Line",
+      position: exactAddressCoord,
+      title: fullAddrLabel,
       content: startPinElement
     });
   }
@@ -1193,36 +1198,81 @@ function renderRoute(routeData) {
 }
 
 function fitRouteBounds(routeData) {
-  if (!googleMap || !googleMapsLib) return;
+  if (!googleMap || !googleMapsLib || !routeData) return;
+  const path = Array.isArray(routeData.path) && routeData.path.length > 0 ? routeData.path : [];
+  if (path.length === 0 && routeData.center) {
+    googleMap.setCenter(routeData.center);
+    googleMap.setZoom(routeData.zoom || 16);
+    return;
+  }
+
+  // If the user just clicked a search result or the Location button, keep the zoomed-in 16 view centered on the selection
+  if (window.__preserveSpotZoomUntil && Date.now() < window.__preserveSpotZoomUntil) {
+    const focusPt = routeData.center || path[0];
+    if (focusPt) {
+      googleMap.setCenter(focusPt);
+      if ((googleMap.getZoom() || 15) < 15.5) {
+        googleMap.setZoom(16);
+      }
+    }
+    return;
+  }
+
   const bounds = new googleMapsLib.LatLngBounds();
-  routeData.path.forEach(pt => bounds.extend(pt));
+  path.forEach(pt => bounds.extend(pt));
   if (activeWaypointCoords) {
     bounds.extend(activeWaypointCoords);
   }
   
-  // Padding adjusted according to collapsed/expanded state
-  const bottomPadding = isSheetCollapsed ? 100 : 260;
+  // Use compact padding inside #mapWrapper (since #planningSheet is a flex sibling below #mapWrapper,
+  // not overlapping it). This guarantees fitBounds always zooms IN onto the route and never zooms out.
   googleMap.fitBounds(bounds, {
-    top: 70,
-    right: 40,
-    bottom: bottomPadding,
-    left: 40
+    top: 40,
+    right: 22,
+    bottom: 22,
+    left: 22
   });
+
+  const targetZoom = Math.max(15, routeData.zoom || 15);
+  setTimeout(() => {
+    if (!googleMap) return;
+    const z = googleMap.getZoom();
+    if (typeof z === 'number') {
+      if (z < 14.5) {
+        googleMap.setCenter(routeData.center || path[0]);
+        googleMap.setZoom(targetZoom);
+      } else if (z > 17.5) {
+        googleMap.setZoom(16);
+      }
+    }
+  }, 60);
 }
 
 function updateRouteInfoUI(routeData) {
   const titleEl = document.getElementById('routeTitle');
+  const fullAddrSubEl = document.getElementById('selectedFullAddressText');
   const badgeEl = document.getElementById('routeMileageBadge');
   const compactTitleEl = document.getElementById('compactRouteTitle');
   const compactMileageEl = document.getElementById('compactRouteMileage');
   const sidewalkEl = document.getElementById('metricSidewalk');
   const litEl = document.getElementById('metricLit');
   const gainEl = document.getElementById('metricGain');
+  const elevKickerEl = document.getElementById('routeElevationKicker');
 
-  if (titleEl) titleEl.textContent = routeData.title;
+  const fullAddress = routeData.fullAddress || routeData.locationName || routeData.title || 'Selected Location';
+  const flavorTitle = routeData.flavorTitle || routeData.title || 'Safe Loop';
+  const optionCount = (currentRouteChoices && currentRouteChoices.length) ? currentRouteChoices.length : 4;
+  const optionNum = (typeof selectedChoiceIndex === 'number' ? selectedChoiceIndex : 0) + 1;
+
+  // Show the entire address prominently at the top without truncation
+  if (titleEl) titleEl.textContent = fullAddress;
+  if (fullAddrSubEl) {
+    fullAddrSubEl.textContent = `${flavorTitle} · Option ${optionNum} of ${optionCount}`;
+  }
   if (badgeEl) badgeEl.innerHTML = `${routeData.distance.toFixed(2)} <span class="text-xs font-semibold text-stone-500">mi</span>`;
-  if (compactTitleEl) compactTitleEl.textContent = routeData.title;
+  if (compactTitleEl) compactTitleEl.textContent = `${fullAddress} · ${flavorTitle}`;
   if (compactMileageEl) compactMileageEl.textContent = `${routeData.distance.toFixed(2)} mi`;
+  if (elevKickerEl) elevKickerEl.textContent = routeData.elevation || '+42 ft';
 
   if (sidewalkEl) sidewalkEl.innerHTML = `<i class="fa-solid fa-check text-xs"></i> ${routeData.sidewalkPct || '98%'} Sidewalks`;
   if (litEl) litEl.innerHTML = `<i class="fa-solid fa-bolt text-xs"></i> ${routeData.litPct || '100%'} Lit Streets`;
@@ -1360,6 +1410,7 @@ function generateMultipleLoopChoices(lat, lng, label = 'Custom Location', target
       title: `${label} ${f.titleSuffix}`,
       flavorTitle: f.titleSuffix,
       locationName: label,
+      fullAddress: label,
       flavorIndex: idx,
       center: { lat, lng },
       zoom: routeDist > 5 ? 14 : (routeDist > 2 ? 15 : 16),
@@ -1416,19 +1467,41 @@ function generateLoopFromCoords(lat, lng, label = 'Custom Location', targetDist 
 }
 
 // ----------------------------------------------------
-// Locate User's Real Hardware GPS & Generate Street-Snapped Safe Loops
+// Locate User's Real Hardware GPS & Zoom Onto Location
 // ----------------------------------------------------
+function zoomMapOntoCoordinate(coord, zoomLevel = 16) {
+  if (!coord) return;
+  window.__preserveSpotZoomUntil = Date.now() + 2800;
+  if (googleMap) {
+    googleMap.setCenter(coord);
+    googleMap.setZoom(zoomLevel);
+  }
+  updateRunnerMapMarker(coord);
+  if (window.__activeLeafletMap) {
+    try {
+      window.__activeLeafletMap.setView([coord.lat, coord.lng], zoomLevel);
+    } catch (_) {}
+  }
+}
+
 function locateUserRealGpsAndMapLoops() {
+  const btnLocate = document.getElementById('btnLocateMyGps');
+  const fallbackCoord =
+    currentUserGpsCoord ||
+    activeRoute?.path?.[0] ||
+    activeRoute?.center ||
+    { lat: 41.3857, lng: -81.7058 };
+
+  // Immediately zoom in onto the active/known location so the button provides instant visual zoom
+  zoomMapOntoCoordinate(fallbackCoord, 16);
+
   if (!('geolocation' in navigator)) {
-    speakInstruction("GPS geolocation is not supported on this device.");
     return;
   }
 
-  const btnLocate = document.getElementById('btnLocateMyGps');
   if (btnLocate) {
     btnLocate.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i>';
   }
-  speakInstruction("Acquiring your live GPS location.");
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
@@ -1440,33 +1513,43 @@ function locateUserRealGpsAndMapLoops() {
         btnLocate.innerHTML = '<i class="fa-solid fa-location-arrow text-xs"></i>';
       }
 
-      let locationLabel = 'My GPS Location';
+      let fullAddressLabel = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       try {
-        const revRes = await fetch(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
-        if (revRes.ok) {
-          const revData = await revRes.json();
-          const props = revData?.features?.[0]?.properties;
-          if (props) {
-            locationLabel = props.name || props.street || props.city || 'My GPS Location';
+        const nomRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`);
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          if (nomData && (nomData.address || nomData.display_name)) {
+            fullAddressLabel = formatFullPhotonAddress(nomData, fullAddressLabel);
           }
         }
-      } catch (_) {}
+      } catch (_) {
+        try {
+          const revRes = await fetch(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            const props = revData?.features?.[0]?.properties;
+            if (props) {
+              fullAddressLabel = formatFullPhotonAddress(props, fullAddressLabel);
+            }
+          }
+        } catch (_e) {}
+      }
 
       const inputSearch = document.getElementById('inputLocationSearch');
-      if (inputSearch) inputSearch.value = locationLabel;
+      if (inputSearch) inputSearch.value = fullAddressLabel;
 
-      generateMultipleLoopChoices(lat, lng, locationLabel, currentSelectedDistance, 0);
-      playTurnChime();
-      speakInstruction(`GPS locked at ${locationLabel}. Mapped 4 street-snapped safe loops starting from your current location.`);
+      generateMultipleLoopChoices(lat, lng, fullAddressLabel, currentSelectedDistance, 0);
+      // Zoom directly onto the user's exact location after rendering the loops
+      zoomMapOntoCoordinate({ lat, lng }, 16);
     },
-    (err) => {
+    () => {
       if (btnLocate) {
         btnLocate.innerHTML = '<i class="fa-solid fa-location-arrow text-xs"></i>';
       }
-      console.warn('[GPS] Geolocation error:', err);
-      speakInstruction("Unable to acquire GPS fix. Please ensure location permission is enabled in your browser or Android settings.");
+      // Keep map zoomed in on the user's active coordinate even if browser geolocation is denied/unavailable
+      zoomMapOntoCoordinate(fallbackCoord, 16);
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    { enableHighAccuracy: true, timeout: 4500, maximumAge: 60000 }
   );
 }
 
@@ -1692,6 +1775,7 @@ function generateLoopChoicesWithWaypoint(originLat, originLng, wpLat, wpLng, lab
       title: `${label} ${f.titleSuffix}`,
       flavorTitle: f.titleSuffix,
       locationName: label,
+      fullAddress: label,
       flavorIndex: idx,
       center: { lat: originLat, lng: originLng },
       waypoint: { lat: wpLat, lng: wpLng },
@@ -1789,15 +1873,15 @@ function renderRouteChoicesList() {
     );
 
     const card = document.createElement('div');
-    card.className = `p-2 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 flex-shrink-0 min-w-[205px] max-w-[240px] snap-start ${
+    card.className = `py-1.5 px-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-1.5 flex-shrink-0 min-w-[172px] max-w-[205px] snap-start ${
       isSelected
         ? 'border-terracotta bg-terracotta/10 ring-1 ring-terracotta shadow-sm'
         : 'border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:border-terracotta/40'
     }`;
 
     card.innerHTML = `
-      <div class="flex items-center gap-2 min-w-0 flex-1">
-        <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ${
+      <div class="flex items-center gap-1.5 min-w-0 flex-1">
+        <div class="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0 ${
           isSelected
             ? 'bg-terracotta text-white shadow-sm'
             : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
@@ -1806,10 +1890,10 @@ function renderRouteChoicesList() {
         </div>
         <div class="truncate flex-1">
           <div class="flex items-center gap-1">
-            <span class="text-xs font-bold text-stone-900 dark:text-white truncate">${route.flavorTitle || route.title}</span>
-            <span class="text-[9px] px-1 py-0.2 rounded font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 flex-shrink-0">${route.safetyScore}</span>
+            <span class="text-[11px] font-bold text-stone-900 dark:text-white truncate">${route.flavorTitle || route.title}</span>
+            <span class="text-[8px] px-1 py-0.2 rounded font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 flex-shrink-0">${route.safetyScore}</span>
           </div>
-          <div class="text-[10px] text-stone-500 dark:text-stone-400 flex items-center gap-1 mt-0.5 truncate">
+          <div class="text-[9px] text-stone-500 dark:text-stone-400 flex items-center gap-1 mt-0.5 truncate">
             <span class="font-mono font-bold text-terracotta">${route.distance.toFixed(2)} mi</span>
             <span>·</span>
             <span>~${route.estMinutes}m</span>
@@ -1820,15 +1904,15 @@ function renderRouteChoicesList() {
       </div>
 
       <div class="flex items-center gap-1 flex-shrink-0">
-        <button class="btn-save-choice-item w-6 h-6 rounded-lg text-[10px] flex items-center justify-center transition ${
+        <button class="btn-save-choice-item w-5 h-5 rounded-md text-[9px] flex items-center justify-center transition ${
           isSaved
             ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40'
             : 'text-stone-400 hover:text-terracotta hover:bg-stone-100 dark:hover:bg-stone-700'
         }" title="${isSaved ? 'Saved in Cloud Library' : 'Save Route to Cloud'}" data-index="${idx}">
           <i class="${isSaved ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'}"></i>
         </button>
-        <div class="w-3 flex justify-center text-terracotta">
-          ${isSelected ? '<i class="fa-solid fa-check text-[10px] font-bold"></i>' : ''}
+        <div class="w-2.5 flex justify-center text-terracotta">
+          ${isSelected ? '<i class="fa-solid fa-check text-[9px] font-bold"></i>' : ''}
         </div>
       </div>
     `;
@@ -2037,6 +2121,8 @@ function playTurnChime() {
 
 function speakInstruction(text, options = {}) {
   if (isVoiceMuted || !text) return;
+  // Only speak aloud during active turn-by-turn navigation OR when the user explicitly clicks an audio/speaker control
+  if (!isNavigating && !options.forceSpeak) return;
 
   const playChime = options.playChime !== false;
   if (playChime) {
@@ -2151,7 +2237,7 @@ function renderManeuversPreviewList(routeData) {
       auditionBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const speechText = `${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note || ''}`;
-        speakInstruction(speechText);
+        speakInstruction(speechText, { forceSpeak: true });
       });
     }
 
@@ -2623,10 +2709,45 @@ function setupUIHandlers() {
   const sheetDragHandle = document.getElementById('sheetDragHandle');
   const btnToggleSheet = document.getElementById('btnToggleSheet');
   const btnExpandFromCompact = document.getElementById('btnExpandFromCompact');
+  const compactHeaderSelectArea = document.getElementById('compactHeaderSelectArea');
+  const routeHeaderSummaryRow = document.getElementById('routeHeaderSummaryRow');
 
   if (sheetDragHandle) sheetDragHandle.addEventListener('click', () => setSheetCollapsed(!isSheetCollapsed));
-  if (btnToggleSheet) btnToggleSheet.addEventListener('click', () => setSheetCollapsed(!isSheetCollapsed));
+  if (btnToggleSheet) {
+    btnToggleSheet.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setSheetCollapsed(!isSheetCollapsed);
+    });
+  }
   if (btnExpandFromCompact) btnExpandFromCompact.addEventListener('click', () => setSheetCollapsed(false));
+  if (compactHeaderSelectArea) {
+    compactHeaderSelectArea.addEventListener('click', () => {
+      const sel = window.getSelection ? window.getSelection().toString() : '';
+      if (sel && sel.length > 0) return;
+      setSheetCollapsed(false);
+    });
+  }
+
+  // Clicking the route summary header area zooms onto the selected route address & toggles turn details (unless user is highlighting text)
+  if (routeHeaderSummaryRow) {
+    routeHeaderSummaryRow.addEventListener('click', (e) => {
+      if (e.target.closest('#btnToggleSheet')) return;
+      const sel = window.getSelection ? window.getSelection().toString() : '';
+      if (sel && sel.length > 0) return;
+      const targetPt = activeRoute?.path?.[0] || activeRoute?.center;
+      if (targetPt && googleMap) {
+        googleMap.panTo(targetPt);
+        if ((googleMap.getZoom() || 15) < 15) {
+          googleMap.setZoom(16);
+        }
+      }
+      const detailsEl = document.getElementById('sheetExpandedDetails');
+      const drawerBtn = document.getElementById('btnToggleDetailedDrawer');
+      if (detailsEl && drawerBtn) {
+        drawerBtn.click();
+      }
+    });
+  }
 
   // Toggle Detailed Drawer (Elevation Profile & Turn-by-Turn Preview)
   const btnToggleDetailedDrawer = document.getElementById('btnToggleDetailedDrawer');
@@ -2642,7 +2763,6 @@ function setupUIHandlers() {
         if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-down text-[9px] text-terracotta';
         if (btnDrawerToggleLabel) btnDrawerToggleLabel.textContent = 'Hide';
         btnToggleDetailedDrawer.classList.add('bg-terracotta/10', 'border-terracotta/30', 'text-terracotta');
-        speakInstruction("Expanded elevation profile and turn list.");
       } else {
         sheetExpandedDetails.classList.add('hidden');
         if (btnDrawerChevron) btnDrawerChevron.className = 'fa-solid fa-chevron-up text-[9px] text-stone-400';
@@ -2662,9 +2782,12 @@ function setupUIHandlers() {
       if (audioIcon) {
         if (isVoiceMuted) {
           audioIcon.className = 'fa-solid fa-volume-xmark text-rose-500';
+          if ('speechSynthesis' in window) {
+            try { window.speechSynthesis.cancel(); } catch (_) {}
+          }
         } else {
           audioIcon.className = 'fa-solid fa-volume-high text-terracotta';
-          speakInstruction("Voice navigation active");
+          speakInstruction("Voice navigation active", { forceSpeak: true });
         }
       }
       if (settingsVoiceStatusLabel) {
@@ -2697,9 +2820,9 @@ function setupUIHandlers() {
   if (mapWeatherBadge) {
     mapWeatherBadge.addEventListener('click', () => {
       if (currentWeatherData) {
-        speakInstruction(`Current weather: ${currentWeatherData.tempF} degrees Fahrenheit, ${currentWeatherData.condition}. Rain probability is ${currentWeatherData.rainProb} percent. ${currentWeatherData.summary}.`);
+        speakInstruction(`Current weather: ${currentWeatherData.tempF} degrees Fahrenheit, ${currentWeatherData.condition}. Rain probability is ${currentWeatherData.rainProb} percent. ${currentWeatherData.summary}.`, { forceSpeak: true });
       } else {
-        speakInstruction("Checking live weather conditions for route.");
+        speakInstruction("Checking live weather conditions for route.", { forceSpeak: true });
       }
     });
   }
@@ -2715,11 +2838,11 @@ function setupUIHandlers() {
       if (navIsPaused) {
         if (hudPauseIcon) hudPauseIcon.className = 'fa-solid fa-play text-emerald-400 text-[11px]';
         if (hudPauseText) hudPauseText.textContent = 'Resume';
-        speakInstruction("Run paused.");
+        speakInstruction("Run paused.", { forceSpeak: true });
       } else {
         if (hudPauseIcon) hudPauseIcon.className = 'fa-solid fa-pause text-amber-400 text-[11px]';
         if (hudPauseText) hudPauseText.textContent = 'Pause';
-        speakInstruction("Run resumed.");
+        speakInstruction("Run resumed.", { forceSpeak: true });
       }
     });
   }
@@ -2728,7 +2851,6 @@ function setupUIHandlers() {
   if (btnHudStop) {
     btnHudStop.addEventListener('click', () => {
       stopNavigation();
-      speakInstruction("Navigation completed. Run summary saved.");
     });
   }
 
@@ -2751,25 +2873,14 @@ function setupUIHandlers() {
       if (!maneuvers.length) return;
       const m = maneuvers[navStepIndex % maneuvers.length];
       if (m) {
-        speakInstruction(`Repeating: ${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note || ''}`, { playChime: true });
+        speakInstruction(`Repeating: ${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note || ''}`, { playChime: true, forceSpeak: true });
       }
     });
   }
 
-  // In-Run Toggle Live GPS vs Indoor Sim Preview Mode
-  const btnHudToggleSimMode = document.getElementById('btnHudToggleSimMode');
-  if (btnHudToggleSimMode) {
-    btnHudToggleSimMode.addEventListener('click', () => {
-      isSimulationMode = !isSimulationMode;
-      syncHudGpsModeBadge();
-      playTurnChime();
-      speakInstruction(
-        isSimulationMode
-          ? 'Switched to indoor route preview simulation. Turns will advance automatically every 6 seconds.'
-          : 'Switched to live hardware GPS tracking. Distance, pace, and turns will follow your physical movement.'
-      );
-    });
-  }
+  // In-Run Live Hardware GPS Indicator
+  isSimulationMode = false;
+  syncHudGpsModeBadge();
 
   // Clicking Nav Instruction Text directly replays the turn guidance
   const navInstructionText = document.getElementById('navInstructionText');
@@ -2779,7 +2890,7 @@ function setupUIHandlers() {
       if (!maneuvers.length) return;
       const m = maneuvers[navStepIndex % maneuvers.length];
       if (m) {
-        speakInstruction(`${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note || ''}`, { playChime: true });
+        speakInstruction(`${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note || ''}`, { playChime: true, forceSpeak: true });
       }
     });
   }
@@ -2897,7 +3008,7 @@ function setupUIHandlers() {
     const redoOffset = redoCount * 0.55;
 
     if (btnRedoChoices) {
-      btnRedoChoices.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-terracotta text-[11px]"></i> <span>Redoing...</span>';
+      btnRedoChoices.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-terracotta text-[9px]"></i><span>...</span>';
     }
     if (btnGenerateAiRoute) {
       btnGenerateAiRoute.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-terracotta"></i> <span>Re-Calculating...</span>';
@@ -2914,7 +3025,7 @@ function setupUIHandlers() {
         speakInstruction(`Generated 4 fresh safe routes around ${locName}. Option 1 selected.`);
       }
       if (btnRedoChoices) {
-        btnRedoChoices.innerHTML = '<i class="fa-solid fa-arrows-rotate text-[11px]"></i> <span>Redo Choices</span>';
+        btnRedoChoices.innerHTML = '<i class="fa-solid fa-arrows-rotate text-[9px]"></i><span>Redo</span>';
       }
       if (btnGenerateAiRoute) {
         btnGenerateAiRoute.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-terracotta"></i> <span>Re-Map AI Loop</span>';
@@ -3044,12 +3155,17 @@ function setupUIHandlers() {
     });
   }
 
-  // Recenter button
+  // Recenter button — zooms in onto the active route / start location
   const recenterBtn = document.getElementById('btnRecenter');
   if (recenterBtn) {
     recenterBtn.addEventListener('click', () => {
+      const targetPt = activeRoute?.path?.[0] || activeRoute?.center || currentUserGpsCoord || { lat: 41.3857, lng: -81.7058 };
       if (googleMap) {
         fitRouteBounds(activeRoute);
+        googleMap.panTo(targetPt);
+        if ((googleMap.getZoom() || 15) < 15) {
+          googleMap.setZoom(15);
+        }
       }
     });
   }
@@ -3495,7 +3611,9 @@ function setupUIHandlers() {
 }
 
 // ----------------------------------------------------
-// 8. Location Search with Safe Loop Generator
+// ----------------------------------------------------
+// 8. Real Street Address & Place Search with Safe Loop Generator
+//    (Google Maps Places API New + OpenStreetMap Nominatim Street Geocoder + Photon)
 // ----------------------------------------------------
 function setupLocationSearch() {
   const inputSearch = document.getElementById('inputLocationSearch');
@@ -3503,70 +3621,310 @@ function setupLocationSearch() {
   const btnClearSearch = document.getElementById('btnClearSearch');
   const suggestionsList = document.getElementById('searchSuggestionsList');
   let searchDebounceTimer = null;
+  let placesSessionToken = null;
+  let latestSearchId = 0;
+  let lastFetchedCandidates = [];
+
+  async function fetchAddressCandidates(query) {
+    const trimmed = (query || '').trim();
+    if (trimmed.length < 2) return [];
+
+    const results = [];
+    const seenKeys = new Set();
+
+    function addCandidate(cand) {
+      if (!cand || !cand.fullAddress) return;
+      const key = cand.fullAddress.toLowerCase().replace(/\s+/g, ' ');
+      if (seenKeys.has(key)) return;
+      seenKeys.add(key);
+      results.push(cand);
+    }
+
+    // 1. OpenStreetMap Nominatim Structured Street & House Number Geocoder (Exact house numbers & streets)
+    const nominatimPromise = (async () => {
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&q=${encodeURIComponent(trimmed)}`;
+        const res = await fetch(nomUrl, {
+          headers: { 'Accept-Language': 'en-US,en' }
+        });
+        if (!res.ok) return [];
+        const items = await res.json();
+        if (!Array.isArray(items)) return [];
+        return items
+          .filter(it => it && it.lat !== undefined && it.lon !== undefined)
+          .map(it => {
+            const fullAddress = formatFullPhotonAddress(it, it.display_name || trimmed);
+            const addr = it.address || {};
+            const secondary = [
+              addr.city || addr.town || addr.village || addr.suburb || addr.county || '',
+              addr.state || '',
+              addr.postcode || ''
+            ].filter(Boolean).join(', ');
+            return {
+              fullAddress,
+              secondaryText: secondary || it.type || 'Street Address',
+              lat: Number(it.lat),
+              lon: Number(it.lon)
+            };
+          });
+      } catch (_) {
+        return [];
+      }
+    })();
+
+    // 2. Google Maps Places API (New) — AutocompleteSuggestion.fetchAutocompleteSuggestions
+    const googlePlacesPromise = (async () => {
+      try {
+        if (!window.google || !window.google.maps || !window.google.maps.importLibrary) return [];
+        const { AutocompleteSuggestion, AutocompleteSessionToken } = await window.google.maps.importLibrary('places');
+        if (!AutocompleteSuggestion || typeof AutocompleteSuggestion.fetchAutocompleteSuggestions !== 'function') {
+          return [];
+        }
+        if (!placesSessionToken && AutocompleteSessionToken) {
+          placesSessionToken = new AutocompleteSessionToken();
+        }
+        const biasCenter = activeRoute?.center || { lat: 41.3857, lng: -81.7058 };
+        const req = {
+          input: trimmed,
+          origin: biasCenter,
+          language: 'en-US',
+          region: 'us',
+          internalUsageAttributionIds: ['gmp_mcp_codeassist_v1_aistudio']
+        };
+        if (placesSessionToken) {
+          req.sessionToken = placesSessionToken;
+        }
+        const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+        if (!Array.isArray(suggestions) || suggestions.length === 0) return [];
+        return suggestions
+          .map(s => s?.placePrediction)
+          .filter(Boolean)
+          .slice(0, 5)
+          .map(pred => {
+            const textStr = pred.text ? pred.text.toString() : trimmed;
+            const secStr = pred.secondaryText ? pred.secondaryText.toString() : 'Verified Google Maps Address';
+            return {
+              fullAddress: textStr,
+              secondaryText: secStr,
+              placePrediction: pred
+            };
+          });
+      } catch (_) {
+        return [];
+      }
+    })();
+
+    // 3. Photon Geocoder with local map-center coordinate bias (Fast fallback for trails/parks)
+    const photonPromise = (async () => {
+      try {
+        const bias = activeRoute?.center || { lat: 41.3857, lng: -81.7058 };
+        const apiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&lat=${bias.lat}&lon=${bias.lng}&limit=4`;
+        const res = await fetch(apiUrl);
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (!Array.isArray(data?.features)) return [];
+        return data.features
+          .filter(f => Array.isArray(f?.geometry?.coordinates))
+          .map(feat => {
+            const p = feat.properties || {};
+            const fullAddress = formatFullPhotonAddress(p, trimmed);
+            const secondary = [
+              p.city || p.town || p.village || p.county || '',
+              p.state || '',
+              p.postcode || ''
+            ].filter(Boolean).join(', ');
+            return {
+              fullAddress,
+              secondaryText: secondary || 'Park / Landmark',
+              lat: Number(feat.geometry.coordinates[1]),
+              lon: Number(feat.geometry.coordinates[0])
+            };
+          });
+      } catch (_) {
+        return [];
+      }
+    })();
+
+    const [nomItems, gmpItems, photonItems] = await Promise.all([
+      nominatimPromise,
+      googlePlacesPromise,
+      photonPromise
+    ]);
+
+    // Prioritize Nominatim exact house-number matches & Google Places predictions first
+    nomItems.forEach(addCandidate);
+    gmpItems.forEach(addCandidate);
+    photonItems.forEach(addCandidate);
+
+    return results.slice(0, 6);
+  }
+
+  async function resolveCandidateCoordinates(cand) {
+    if (!cand) return null;
+    if (typeof cand.lat === 'number' && typeof cand.lon === 'number' && !Number.isNaN(cand.lat) && !Number.isNaN(cand.lon)) {
+      return {
+        fullAddress: cand.fullAddress,
+        lat: cand.lat,
+        lon: cand.lon
+      };
+    }
+
+    // Resolve Google Maps PlacePrediction via toPlace() + fetchFields()
+    if (cand.placePrediction && typeof cand.placePrediction.toPlace === 'function') {
+      try {
+        const place = cand.placePrediction.toPlace();
+        await place.fetchFields({
+          fields: ['displayName', 'formattedAddress', 'location']
+        });
+        // Conclude session token and create a fresh one for next search
+        placesSessionToken = null;
+        if (place.location) {
+          const lat = typeof place.location.lat === 'function' ? place.location.lat() : place.location.lat;
+          const lon = typeof place.location.lng === 'function' ? place.location.lng() : place.location.lng;
+          const resolvedAddr = place.formattedAddress || cand.fullAddress;
+          return {
+            fullAddress: resolvedAddr,
+            lat: Number(lat),
+            lon: Number(lon)
+          };
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: geocode cand.fullAddress via Nominatim
+    try {
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&q=${encodeURIComponent(cand.fullAddress)}`;
+      const res = await fetch(nomUrl);
+      if (res.ok) {
+        const arr = await res.json();
+        if (Array.isArray(arr) && arr[0]) {
+          return {
+            fullAddress: formatFullPhotonAddress(arr[0], cand.fullAddress),
+            lat: Number(arr[0].lat),
+            lon: Number(arr[0].lon)
+          };
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
 
   async function performSearch(query) {
-    if (!query || query.trim().length < 2) {
+    const trimmed = (query || '').trim();
+    if (trimmed.length < 2) {
+      lastFetchedCandidates = [];
       if (suggestionsList) suggestionsList.classList.add('hidden');
-      return;
+      return [];
+    }
+
+    const reqId = ++latestSearchId;
+    const candidates = await fetchAddressCandidates(trimmed);
+    if (reqId !== latestSearchId) return candidates;
+
+    lastFetchedCandidates = candidates;
+    if (!suggestionsList) return candidates;
+    suggestionsList.innerHTML = '';
+
+    if (candidates.length === 0) {
+      suggestionsList.innerHTML = '<div class="p-3 text-stone-500 text-center text-xs">No matching street address or landmark found. Try adding city or state.</div>';
+      suggestionsList.classList.remove('hidden');
+      return [];
+    }
+
+    candidates.forEach((cand) => {
+      const item = document.createElement('div');
+      item.className = 'p-2.5 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer border-b border-stone-100 dark:border-stone-700 last:border-none flex items-start gap-2.5 transition';
+      item.innerHTML = `
+        <i class="fa-solid fa-location-dot text-terracotta text-xs flex-shrink-0 mt-1"></i>
+        <div class="min-w-0 flex-1">
+          <div class="font-bold text-stone-900 dark:text-white break-words leading-snug">${escapeHtml(cand.fullAddress)}</div>
+          <div class="text-[10px] text-stone-500 break-words leading-tight mt-0.5">${escapeHtml(cand.secondaryText || '')}</div>
+        </div>
+      `;
+
+      item.addEventListener('click', async () => {
+        const resolved = await resolveCandidateCoordinates(cand);
+        if (resolved) {
+          selectSearchedLocation(resolved.fullAddress, resolved.lat, resolved.lon);
+        }
+      });
+
+      suggestionsList.appendChild(item);
+    });
+
+    suggestionsList.classList.remove('hidden');
+    return candidates;
+  }
+
+  // Pressing Enter or clicking the orange Search button immediately navigates the map to the typed address!
+  async function submitAddressSearchNow(query) {
+    const trimmed = (query || '').trim();
+    if (!trimmed) return;
+
+    clearTimeout(searchDebounceTimer);
+    if (btnSearchSubmit) {
+      btnSearchSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
     }
 
     try {
-      // Free Photon OpenStreetMap geocoder API
-      const apiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
-      const res = await fetch(apiUrl);
-      const data = await res.json();
-
-      if (!suggestionsList) return;
-      suggestionsList.innerHTML = '';
-
-      if (!data.features || data.features.length === 0) {
-        suggestionsList.innerHTML = '<div class="p-3 text-stone-500 text-center text-xs">No locations found. Try city, park, or landmark.</div>';
-        suggestionsList.classList.remove('hidden');
-        return;
+      let candidates = await fetchAddressCandidates(trimmed);
+      if (candidates.length > 0) {
+        const resolved = await resolveCandidateCoordinates(candidates[0]);
+        if (resolved) {
+          selectSearchedLocation(resolved.fullAddress, resolved.lat, resolved.lon);
+          return;
+        }
       }
 
-      data.features.forEach((feat) => {
-        const p = feat.properties;
-        const name = p.name || p.street || 'Location';
-        const sub = [p.city, p.state, p.country].filter(Boolean).join(', ');
-        const coords = feat.geometry.coordinates; // [lon, lat]
-
-        const item = document.createElement('div');
-        item.className = 'p-2.5 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer border-b border-stone-100 dark:border-stone-700 last:border-none flex items-center gap-2.5 transition';
-        item.innerHTML = `
-          <i class="fa-solid fa-location-dot text-terracotta text-xs flex-shrink-0"></i>
-          <div class="truncate flex-1">
-            <div class="font-bold text-stone-900 dark:text-white truncate">${escapeHtml(name)}</div>
-            <div class="text-[10px] text-stone-500 truncate">${escapeHtml(sub)}</div>
-          </div>
-        `;
-
-        item.addEventListener('click', () => {
-          const lat = coords[1];
-          const lon = coords[0];
-          selectSearchedLocation(name, lat, lon);
-        });
-
-        suggestionsList.appendChild(item);
-      });
-
-      suggestionsList.classList.remove('hidden');
-    } catch (_) {
-      if (suggestionsList) {
-        suggestionsList.innerHTML = '<div class="p-3 text-stone-500 text-center text-xs">Unable to search location. Check connection.</div>';
-        suggestionsList.classList.remove('hidden');
+      // Direct Google Maps Places Text Search (New) fallback if available
+      if (window.google?.maps?.importLibrary) {
+        try {
+          const { Place } = await window.google.maps.importLibrary('places');
+          if (Place && typeof Place.searchByText === 'function') {
+            const { places } = await Place.searchByText({
+              textQuery: trimmed,
+              fields: ['displayName', 'formattedAddress', 'location'],
+              maxResultCount: 1,
+              language: 'en-US',
+              region: 'us',
+              internalUsageAttributionIds: ['gmp_mcp_codeassist_v1_aistudio']
+            });
+            if (places && places[0] && places[0].location) {
+              const p = places[0];
+              const lat = typeof p.location.lat === 'function' ? p.location.lat() : p.location.lat;
+              const lon = typeof p.location.lng === 'function' ? p.location.lng() : p.location.lng;
+              selectSearchedLocation(p.formattedAddress || p.displayName || trimmed, Number(lat), Number(lon));
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+    } finally {
+      if (btnSearchSubmit) {
+        btnSearchSubmit.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
       }
     }
   }
 
-  function selectSearchedLocation(label, lat, lon) {
-    if (inputSearch) inputSearch.value = label;
+  function selectSearchedLocation(fullAddress, lat, lon) {
+    if (inputSearch) {
+      inputSearch.value = fullAddress;
+      inputSearch.blur();
+    }
     if (suggestionsList) suggestionsList.classList.add('hidden');
     if (btnClearSearch) btnClearSearch.classList.remove('hidden');
 
-    // Generate 4 diverse safe loop choices starting at this searched address
-    generateMultipleLoopChoices(lat, lon, label, currentSelectedDistance);
-    speakInstruction(`Mapped 4 safe route choices for ${label}. Option 1 selected.`);
+    currentUserGpsCoord = { lat, lng: lon };
+
+    // Lock zoom before generating routes so renderRoute / OSRM callbacks keep the camera centered on this exact address
+    zoomMapOntoCoordinate({ lat, lng: lon }, 16);
+
+    // Generate 4 diverse safe loop choices starting and ending at this exact searched address
+    generateMultipleLoopChoices(lat, lon, fullAddress, currentSelectedDistance);
+
+    // Re-affirm center and street-level zoom onto the exact address
+    zoomMapOntoCoordinate({ lat, lng: lon }, 16);
   }
 
   if (inputSearch) {
@@ -3577,17 +3935,25 @@ function setupLocationSearch() {
         else btnClearSearch.classList.add('hidden');
       }
       clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(() => performSearch(val), 350);
+      searchDebounceTimer = setTimeout(() => performSearch(val), 280);
     });
 
     inputSearch.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') performSearch(inputSearch.value);
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        void submitAddressSearchNow(inputSearch.value);
+      } else if (e.key === 'Escape') {
+        if (suggestionsList) suggestionsList.classList.add('hidden');
+      }
     });
   }
 
   if (btnClearSearch) {
     btnClearSearch.addEventListener('click', () => {
-      if (inputSearch) inputSearch.value = '';
+      if (inputSearch) {
+        inputSearch.value = '';
+        inputSearch.focus();
+      }
       btnClearSearch.classList.add('hidden');
       if (suggestionsList) suggestionsList.classList.add('hidden');
     });
@@ -3595,7 +3961,9 @@ function setupLocationSearch() {
 
   if (btnSearchSubmit) {
     btnSearchSubmit.addEventListener('click', () => {
-      if (inputSearch) performSearch(inputSearch.value);
+      if (inputSearch) {
+        void submitAddressSearchNow(inputSearch.value);
+      }
     });
   }
 
@@ -3641,6 +4009,33 @@ function setupSafeGuardHandlers() {
     btnCancelContact.addEventListener('click', () => addContactForm.classList.add('hidden'));
   }
 
+  // Load any locally saved contacts on startup
+  if (contactsList) {
+    try {
+      const savedLocal = JSON.parse(localStorage.getItem('paceplot_local_contacts_v1') || '[]');
+      if (Array.isArray(savedLocal)) {
+        savedLocal.forEach((c) => {
+          if (!c || !c.name) return;
+          const card = document.createElement('div');
+          card.className = 'p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40 border border-stone-100 dark:border-stone-700 flex items-center justify-between';
+          card.innerHTML = `
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 font-bold text-xs flex items-center justify-center">
+                ${escapeHtml(c.name.slice(0, 2).toUpperCase())}
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-stone-900 dark:text-white">${escapeHtml(c.name)}</h4>
+                <p class="text-[10px] text-stone-500">${escapeHtml(c.phone || '')} • Live Link Recipient</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">Saved</span>
+          `;
+          contactsList.appendChild(card);
+        });
+      }
+    } catch (_) {}
+  }
+
   if (btnSaveContact && contactsList) {
     btnSaveContact.addEventListener('click', async () => {
       const nameInput = document.getElementById('newContactName');
@@ -3659,6 +4054,12 @@ function setupSafeGuardHandlers() {
           console.error("Error adding contact to Firestore:", err);
         }
       } else {
+        try {
+          const savedLocal = JSON.parse(localStorage.getItem('paceplot_local_contacts_v1') || '[]');
+          savedLocal.push({ name, phone });
+          localStorage.setItem('paceplot_local_contacts_v1', JSON.stringify(savedLocal));
+        } catch (_) {}
+
         const newCard = document.createElement('div');
         newCard.className = 'p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40 border border-stone-100 dark:border-stone-700 flex items-center justify-between';
         newCard.innerHTML = `
@@ -3671,14 +4072,14 @@ function setupSafeGuardHandlers() {
               <p class="text-[10px] text-stone-500">${escapeHtml(phone)} • Live Link Recipient</p>
             </div>
           </div>
-          <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">Added</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">Saved</span>
         `;
 
         contactsList.appendChild(newCard);
         if (nameInput) nameInput.value = '';
         if (phoneInput) phoneInput.value = '';
         if (addContactForm) addContactForm.classList.add('hidden');
-        speakInstruction("New emergency contact added to Stride SafeGuard.");
+        speakInstruction("New emergency contact saved.");
       }
     });
   }
@@ -3898,8 +4299,8 @@ function setupFirebaseAuth() {
 
       // Reset badges
       if (contactsSyncStatus) {
-        contactsSyncStatus.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400';
-        contactsSyncStatus.textContent = 'Local Demo';
+        contactsSyncStatus.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300';
+        contactsSyncStatus.textContent = 'Saved on Device';
       }
       if (workoutSyncBadge) {
         workoutSyncBadge.className = 'px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400';

@@ -283,6 +283,18 @@ test('gpsEngine computes real Haversine distances, live GPS pace, jitter filteri
 
   const buf16 = new Uint8Array([0x01, 172, 0x00]).buffer;
   assert.equal(parseBleHeartRateMeasurement(new DataView(buf16)), 172);
+
+  // Full address formatting from Photon properties
+  const { formatFullPhotonAddress } = await import('./gpsEngine.js');
+  const fullAddr = formatFullPhotonAddress({
+    name: 'West Creek Reservation',
+    housenumber: '2277',
+    street: 'West Ridgewood Drive',
+    city: 'Parma',
+    state: 'Ohio',
+    postcode: '44134'
+  });
+  assert.equal(fullAddr, 'West Creek Reservation, 2277 West Ridgewood Drive, Parma, Ohio 44134');
 });
 
 

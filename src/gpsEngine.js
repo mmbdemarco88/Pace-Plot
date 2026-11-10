@@ -152,6 +152,27 @@ export async function fetchStreetSnappedLoopFromOsrm(waypoints, fallbackLabel = 
       lng: Number(lng.toFixed(6))
     }));
 
+    if (snappedPath.length < 3) return null;
+    const originCoord = {
+      lat: Number(Number(waypoints[0].lat).toFixed(6)),
+      lng: Number(Number(waypoints[0].lng).toFixed(6))
+    };
+    // Reject if OSRM snapped more than 500m away from the requested start address
+    if (haversineDistanceMeters(originCoord, snappedPath[0]) > 500) {
+      return null;
+    }
+    // Anchor the start and finish of the loop directly at the exact chosen address coordinate
+    if (haversineDistanceMeters(originCoord, snappedPath[0]) > 3) {
+      snappedPath.unshift(originCoord);
+    } else {
+      snappedPath[0] = originCoord;
+    }
+    if (haversineDistanceMeters(originCoord, snappedPath[snappedPath.length - 1]) > 3) {
+      snappedPath.push({ ...originCoord });
+    } else {
+      snappedPath[snappedPath.length - 1] = { ...originCoord };
+    }
+
     const distanceMiles = Number((route.distance / METERS_PER_MILE).toFixed(2));
     const maneuvers = [];
 
@@ -204,3 +225,53 @@ export async function fetchStreetSnappedLoopFromOsrm(waypoints, fallbackLabel = 
     return null;
   }
 }
+
+/**
+ * Construct a complete, full human-readable address from Nominatim / Photon / OpenStreetMap properties
+ * so choosing an address displays the entire street address, city, state, and zip code.
+ */
+export function formatFullPhotonAddress(props, fallback = 'Selected Location') {
+  if (!props || typeof props !== 'object') return fallback;
+
+  const addr = props.address && typeof props.address === 'object' ? props.address : props;
+
+  const streetNumber = (addr.housenumber || addr.house_number)
+    ? String(addr.housenumber || addr.house_number).trim()
+    : '';
+  const streetName = (addr.street || addr.road || addr.pedestrian || addr.footway)
+    ? String(addr.street || addr.road || addr.pedestrian || addr.footway).trim()
+    : '';
+  const streetFull = [streetNumber, streetName].filter(Boolean).join(' ');
+
+  const rawName = (props.name || addr.name || addr.amenity || addr.building || addr.leisure || addr.park)
+    ? String(props.name || addr.name || addr.amenity || addr.building || addr.leisure || addr.park).trim()
+    : '';
+  const placeName = rawName && rawName !== streetName && rawName !== streetFull ? rawName : '';
+
+  const city =
+    addr.city ||
+    addr.town ||
+    addr.village ||
+    addr.suburb ||
+    addr.municipality ||
+    addr.hamlet ||
+    addr.district ||
+    addr.county ||
+    '';
+
+  const state = addr.state ? String(addr.state).trim() : '';
+  const postcode = addr.postcode ? String(addr.postcode).trim() : '';
+  const stateZip = [state, postcode].filter(Boolean).join(' ');
+
+  const parts = [placeName, streetFull, city, stateZip].filter(Boolean);
+  // Deduplicate adjacent identical segments (e.g. when placeName == city)
+  const uniqueParts = parts.filter((part, idx) => idx === 0 || part.toLowerCase() !== parts[idx - 1].toLowerCase());
+
+  if (uniqueParts.length === 0) {
+    if (props.display_name) return String(props.display_name).trim();
+    if (addr.country) return String(addr.country);
+  }
+  return uniqueParts.join(', ') || fallback;
+}
+
+
