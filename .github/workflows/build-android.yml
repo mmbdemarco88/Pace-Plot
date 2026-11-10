@@ -1,8 +1,8 @@
-name: Build Pace Plot Android App Bundle
+name: Build Pace Plot Native Android App
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ '**' ]
   workflow_dispatch:
 
 jobs:
@@ -24,31 +24,38 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install Dependencies & Setup Capacitor
+      - name: Initialize Package and Capacitor (Self-Healing)
         run: |
-          npm install
+          # 1. Create package.json if it doesn't exist
+          if [ ! -f "package.json" ]; then
+            npm init -y
+          fi
+          
+          # 2. Install Capacitor libraries
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
-          # Create web directory for Capacitor
+          # 3. Ensure a web directory with index.html exists
           mkdir -p www
           cp -r index.html * www/ 2>/dev/null || true
           
-          # Configure Capacitor
-          if [ ! -f "capacitor.config.json" ] && [ ! -f "capacitor.config.ts" ]; then
-            cat << 'EOF' > capacitor.config.json
+          # 4. Generate clean Capacitor configuration
+          cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.stridecircuit.paceplot",
             "appName": "Pace Plot",
             "webDir": "www"
           }
           EOF
-          fi
           
-          # Add and sync Android platform
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
+          # 5. Add Android native platform
+          rm -rf android
+          npx cap add android
           npx cap sync android
+
+      - name: Configure Version Code 2 for Play Store Update
+        run: |
+          sed -i 's/versionCode 1/versionCode 2/g' android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "2.0.0"/g' android/app/build.gradle
 
       - name: Build Android App Bundle (.aab)
         run: |
@@ -56,15 +63,15 @@ jobs:
           chmod +x gradlew
           ./gradlew bundleRelease
 
-      - name: Sign App Bundle for Google Play
+      - name: Sign App Bundle
         run: |
           keytool -genkey -v -keystore release-key.jks -alias paceplot -keyalg RSA -keysize 2048 -validity 10000 -storepass StrideCircuit2026 -keypass StrideCircuit2026 -dname "CN=Stride Circuit, OU=Mobile, O=Stride Circuit LLC, L=Parma, ST=Ohio, C=US"
           AAB_FILE=$(find android/app/build/outputs/bundle/release -name "*.aab" | head -n 1)
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore release-key.jks -storepass StrideCircuit2026 -keypass StrideCircuit2026 "$AAB_FILE" paceplot
-          cp "$AAB_FILE" paceplot-release-signed.aab
+          cp "$AAB_FILE" paceplot-v2-signed.aab
 
       - name: Upload Finished Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PacePlot-Release-AAB
-          path: paceplot-release-signed.aab
+          name: PacePlot-v2-AAB
+          path: paceplot-v2-signed.aab
