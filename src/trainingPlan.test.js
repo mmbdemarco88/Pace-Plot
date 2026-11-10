@@ -248,4 +248,42 @@ test('deriveHistoricalMaxHeartRate and calculateHeartRateZones compute personali
   assert.ok(d3Model.items.every((item) => item.fillHex.startsWith('#')));
 });
 
+test('gpsEngine computes real Haversine distances, live GPS pace, jitter filtering, and BLE heart rate bytes', async () => {
+  const {
+    haversineDistanceMeters,
+    haversineDistanceMiles,
+    computeLiveGpsPace,
+    evaluateGpsFixMovement,
+    parseBleHeartRateMeasurement
+  } = await import('./gpsEngine.js');
+
+  const start = { lat: 41.3857, lng: -81.7058 };
+  const oneKmNorth = { lat: 41.3947, lng: -81.7058 }; // ~1000.8 meters
+  const distMeters = haversineDistanceMeters(start, oneKmNorth);
+  assert.ok(distMeters > 995 && distMeters < 1005);
+
+  const distMiles = haversineDistanceMiles(start, oneKmNorth);
+  assert.ok(distMiles > 0.61 && distMiles < 0.63);
+
+  // Jitter filter rejects < 2.5m stationary drift and accepts real running movement
+  const driftFix = evaluateGpsFixMovement(start, { lat: 41.385705, lng: -81.705805 }, 8);
+  assert.equal(driftFix.accepted, false);
+
+  const realStepFix = evaluateGpsFixMovement(start, { lat: 41.38585, lng: -81.7058 }, 8);
+  assert.equal(realStepFix.accepted, true);
+  assert.ok(realStepFix.deltaMeters > 15);
+
+  // Live pace calculation from speed (3.35 m/s = ~8'00"/mi)
+  const paceFromSpeed = computeLiveGpsPace(0.5, 240, 3.3528);
+  assert.equal(paceFromSpeed.formatted, `8'00"`);
+
+  // BLE Heart Rate 8-bit & 16-bit GATT measurement parsing
+  const buf8 = new Uint8Array([0x00, 154]).buffer;
+  assert.equal(parseBleHeartRateMeasurement(new DataView(buf8)), 154);
+
+  const buf16 = new Uint8Array([0x01, 172, 0x00]).buffer;
+  assert.equal(parseBleHeartRateMeasurement(new DataView(buf16)), 172);
+});
+
+
 

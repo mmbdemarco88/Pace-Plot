@@ -82,6 +82,13 @@ import {
   initThemeController
 } from './theme.js';
 import { renderD3HeartRateZonesBarChart } from './hrZoneChart.js';
+import {
+  haversineDistanceMeters,
+  computeLiveGpsPace,
+  evaluateGpsFixMovement,
+  parseBleHeartRateMeasurement,
+  fetchStreetSnappedLoopFromOsrm
+} from './gpsEngine.js';
 
 // HTML Entity Escaping Helper (DOM XSS Defense)
 function escapeHtml(value) {
@@ -281,6 +288,18 @@ let currentPlanWeek = 0;
 let activeTrainingPlan = null;
 let historicalWorkoutsCache = [];
 let currentLiveSensorHr = 148;
+let isBleHrConnected = false;
+let bleHrDevice = null;
+
+// Real GPS Tracking, WakeLock & Breadcrumb State
+let gpsWatchId = null;
+let wakeLockSentinel = null;
+let isSimulationMode = false; // Default is REAL hardware GPS tracking
+let liveGpsDistanceMiles = 0;
+let lastAcceptedGpsCoord = null;
+let liveGpsBreadcrumbCoords = [];
+let gpsBreadcrumbPolyline = null;
+let currentUserGpsCoord = null;
 
 // ----------------------------------------------------
 // Initialize Application
@@ -1373,11 +1392,82 @@ function generateMultipleLoopChoices(lat, lng, label = 'Custom Location', target
   renderRouteChoicesList();
   updateEstimatedDuration();
 
+  // Asynchronously snap the generated loops to real pedestrian streets/trails via OSRM Foot Router
+  choices.forEach((choice, idx) => {
+    fetchStreetSnappedLoopFromOsrm(choice.path, choice.traitTag).then((snapped) => {
+      if (!snapped || !Array.isArray(snapped.path) || snapped.path.length < 3) return;
+      choice.path = snapped.path;
+      if (snapped.maneuvers && snapped.maneuvers.length >= 2) {
+        choice.maneuvers = snapped.maneuvers;
+      }
+      if (currentRouteChoices[idx] === choice && selectedChoiceIndex === idx && !isNavigating) {
+        activeRoute = choice;
+        renderRoute(activeRoute);
+        renderRouteChoicesList();
+      }
+    });
+  });
+
   return choices;
 }
 
 function generateLoopFromCoords(lat, lng, label = 'Custom Location', targetDist = 3.1) {
   return generateMultipleLoopChoices(lat, lng, label, targetDist, 0);
+}
+
+// ----------------------------------------------------
+// Locate User's Real Hardware GPS & Generate Street-Snapped Safe Loops
+// ----------------------------------------------------
+function locateUserRealGpsAndMapLoops() {
+  if (!('geolocation' in navigator)) {
+    speakInstruction("GPS geolocation is not supported on this device.");
+    return;
+  }
+
+  const btnLocate = document.getElementById('btnLocateMyGps');
+  if (btnLocate) {
+    btnLocate.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i>';
+  }
+  speakInstruction("Acquiring your live GPS location.");
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      currentUserGpsCoord = { lat, lng };
+
+      if (btnLocate) {
+        btnLocate.innerHTML = '<i class="fa-solid fa-location-arrow text-xs"></i>';
+      }
+
+      let locationLabel = 'My GPS Location';
+      try {
+        const revRes = await fetch(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`);
+        if (revRes.ok) {
+          const revData = await revRes.json();
+          const props = revData?.features?.[0]?.properties;
+          if (props) {
+            locationLabel = props.name || props.street || props.city || 'My GPS Location';
+          }
+        }
+      } catch (_) {}
+
+      const inputSearch = document.getElementById('inputLocationSearch');
+      if (inputSearch) inputSearch.value = locationLabel;
+
+      generateMultipleLoopChoices(lat, lng, locationLabel, currentSelectedDistance, 0);
+      playTurnChime();
+      speakInstruction(`GPS locked at ${locationLabel}. Mapped 4 street-snapped safe loops starting from your current location.`);
+    },
+    (err) => {
+      if (btnLocate) {
+        btnLocate.innerHTML = '<i class="fa-solid fa-location-arrow text-xs"></i>';
+      }
+      console.warn('[GPS] Geolocation error:', err);
+      speakInstruction("Unable to acquire GPS fix. Please ensure location permission is enabled in your browser or Android settings.");
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
 }
 
 // ----------------------------------------------------
@@ -2070,18 +2160,183 @@ function renderManeuversPreviewList(routeData) {
 }
 
 // ----------------------------------------------------
-// 5. Live Navigation Simulation Loop
+// 5. Real Hardware GPS Navigation Engine (+ Optional Indoor Sim Preview)
 // ----------------------------------------------------
+async function requestScreenWakeLock() {
+  try {
+    if ('wakeLock' in navigator && navigator.wakeLock) {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+    }
+  } catch (_) {}
+}
+
+async function releaseScreenWakeLock() {
+  try {
+    if (wakeLockSentinel) {
+      await wakeLockSentinel.release();
+      wakeLockSentinel = null;
+    }
+  } catch (_) {}
+}
+
+function syncHudGpsModeBadge() {
+  const modeBtn = document.getElementById('btnHudToggleSimMode');
+  const modeIcon = document.getElementById('hudGpsModeIcon');
+  const modeText = document.getElementById('hudGpsModeText');
+  if (!modeBtn || !modeIcon || !modeText) return;
+
+  if (isSimulationMode) {
+    modeBtn.className = 'text-[10px] text-amber-300 font-bold flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-lg hover:bg-amber-500/30 transition cursor-pointer';
+    modeIcon.className = 'fa-solid fa-wand-magic-sparkles text-[9px]';
+    modeText.textContent = 'Sim Preview';
+  } else {
+    modeBtn.className = 'text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg hover:bg-emerald-500/25 transition cursor-pointer';
+    modeIcon.className = 'fa-solid fa-satellite-dish text-[9px]';
+    modeText.textContent = 'Live GPS';
+  }
+}
+
+function handleRealGpsPositionUpdate(position) {
+  if (!isNavigating || navIsPaused || isSimulationMode || !position || !position.coords) return;
+
+  const newCoord = {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude
+  };
+  currentUserGpsCoord = newCoord;
+
+  // Update runner marker on Google Map to real physical GPS coordinate
+  updateRunnerMapMarker(newCoord);
+
+  // Filter GPS drift and accumulate real Haversine distance
+  const moveEval = evaluateGpsFixMovement(lastAcceptedGpsCoord, newCoord, position.coords.accuracy);
+  if (moveEval.accepted) {
+    liveGpsDistanceMiles += moveEval.deltaMiles;
+    lastAcceptedGpsCoord = newCoord;
+    liveGpsBreadcrumbCoords.push(newCoord);
+
+    // Draw live GPS breadcrumb path on Google Map
+    if (googleMap && googleMapsLib && liveGpsBreadcrumbCoords.length >= 2) {
+      if (!gpsBreadcrumbPolyline) {
+        gpsBreadcrumbPolyline = new googleMapsLib.Polyline({
+          path: liveGpsBreadcrumbCoords,
+          geodesic: true,
+          strokeColor: '#10b981',
+          strokeOpacity: 0.95,
+          strokeWeight: 5,
+          zIndex: 25,
+          map: googleMap
+        });
+      } else {
+        gpsBreadcrumbPolyline.setPath(liveGpsBreadcrumbCoords);
+      }
+    }
+  }
+
+  // Update live distance & pace in HUD
+  const hudDistance = document.getElementById('hudDistance');
+  const hudPace = document.getElementById('hudPace');
+  const hudPaceStatus = document.getElementById('hudPaceStatus');
+  const healthCalories = document.getElementById('healthCalories');
+
+  if (hudDistance) {
+    hudDistance.textContent = `${liveGpsDistanceMiles.toFixed(2)} mi`;
+  }
+
+  const livePace = computeLiveGpsPace(liveGpsDistanceMiles, navSecondsElapsed, position.coords.speed);
+  if (hudPace) {
+    hudPace.textContent = livePace.secondsPerMile ? livePace.formatted : currentTargetPace;
+  }
+  if (hudPaceStatus && livePace.secondsPerMile) {
+    const diff = livePace.secondsPerMile - currentPaceSeconds;
+    if (Math.abs(diff) <= 15) {
+      hudPaceStatus.className = 'font-bold text-emerald-400 flex items-center gap-1';
+      hudPaceStatus.innerHTML = '<i class="fa-solid fa-circle-check text-[10px]"></i><span>On Pace</span>';
+    } else if (diff < -15) {
+      hudPaceStatus.className = 'font-bold text-sky-400 flex items-center gap-1';
+      hudPaceStatus.innerHTML = '<i class="fa-solid fa-bolt text-[10px]"></i><span>Ahead of Pace</span>';
+    } else {
+      hudPaceStatus.className = 'font-bold text-amber-400 flex items-center gap-1';
+      hudPaceStatus.innerHTML = '<i class="fa-solid fa-gauge-high text-[10px]"></i><span>Push Pace</span>';
+    }
+  }
+
+  if (healthCalories && liveGpsDistanceMiles > 0) {
+    const burned = Math.round(liveGpsDistanceMiles * 105);
+    healthCalories.innerHTML = `${burned} <span class="text-[10px] font-sans font-normal text-stone-400">kcal</span>`;
+  }
+
+  // Check real physical distance to next turn maneuver
+  const maneuvers = activeRoute?.maneuvers || [];
+  const nextStepIdx = navStepIndex + 1;
+  if (nextStepIdx < maneuvers.length) {
+    const nextManeuver = maneuvers[nextStepIdx];
+    const targetPt =
+      nextManeuver.lat && nextManeuver.lng
+        ? { lat: nextManeuver.lat, lng: nextManeuver.lng }
+        : activeRoute.path[Math.min(nextStepIdx, activeRoute.path.length - 1)];
+
+    if (targetPt) {
+      const distMeters = haversineDistanceMeters(newCoord, targetPt);
+      const distFeet = Math.round(distMeters * 3.28084);
+      const navDistanceToTurn = document.getElementById('navDistanceToTurn');
+      if (navDistanceToTurn) {
+        navDistanceToTurn.textContent =
+          distFeet >= 1056
+            ? `In ${(distMeters / 1609.344).toFixed(1)} mi`
+            : `In ${Math.max(10, Math.round(distFeet / 10) * 10)} ft`;
+      }
+
+      // Speak and advance turn automatically when runner reaches within 35 meters (~115 ft) of the turn!
+      if (distMeters <= 35) {
+        navStepIndex = nextStepIdx;
+        updateNavStep(navStepIndex, false, true);
+      }
+    }
+  }
+}
+
+function updateRunnerMapMarker(coord) {
+  if (!coord || !googleMap || !markerLib || !markerLib.AdvancedMarkerElement) return;
+  if (!runnerMarker) {
+    const runnerDotEl = document.createElement('div');
+    runnerDotEl.className = 'runner-pulse';
+    runnerDotEl.innerHTML = `
+      <div style="background-color:#E15A2B; width:22px; height:22px; border-radius:50%; border:3px solid #ffffff; box-shadow:0 2px 10px rgba(225,90,43,0.9); display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px;">
+        <i class="fa-solid fa-person-running"></i>
+      </div>
+    `;
+    runnerMarker = new markerLib.AdvancedMarkerElement({
+      map: googleMap,
+      position: coord,
+      title: "Active Runner GPS Location",
+      content: runnerDotEl
+    });
+  } else {
+    runnerMarker.position = coord;
+  }
+  googleMap.panTo(coord);
+}
+
 function startNavigation() {
   isNavigating = true;
   navIsPaused = false;
   navSecondsElapsed = 0;
   navStepIndex = 0;
+  liveGpsDistanceMiles = 0;
+  lastAcceptedGpsCoord = null;
+  liveGpsBreadcrumbCoords = [];
 
-  // Unlock Web Audio Context and Speech Synthesis from this user gesture
+  if (gpsBreadcrumbPolyline) {
+    gpsBreadcrumbPolyline.setMap(null);
+    gpsBreadcrumbPolyline = null;
+  }
+
+  // Unlock Web Audio Context, Speech Synthesis, and Screen WakeLock
   if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
+  requestScreenWakeLock();
 
   // Auto-collapse bottom sheet to maximize map visibility during run
   setSheetCollapsed(true);
@@ -2093,39 +2348,67 @@ function startNavigation() {
   const mapSpotifyPill = document.getElementById('mapSpotifyFloatingPill');
   const hudPauseIcon = document.getElementById('hudPauseIcon');
   const hudPauseText = document.getElementById('hudPauseText');
+  const hudDistance = document.getElementById('hudDistance');
+  const hudTimer = document.getElementById('hudTimer');
 
   if (btnNavIcon) btnNavIcon.className = 'fa-solid fa-circle-stop text-sm text-rose-300';
   if (btnNavLabel) btnNavLabel.textContent = 'End Navigation';
-  if (compactBtnIcon) compactBtnIcon.className = 'fa-solid fa-circle-stop text-rose-300';
+  if (compactBtnIcon) compactBtnIcon.className = 'fa-solid fa-circle-play text-rose-300';
   if (navCard) navCard.classList.remove('hidden');
   if (mapSpotifyPill) mapSpotifyPill.classList.add('hidden');
   if (hudPauseIcon) hudPauseIcon.className = 'fa-solid fa-pause text-amber-400 text-[11px]';
   if (hudPauseText) hudPauseText.textContent = 'Pause';
+  if (hudDistance) hudDistance.textContent = '0.00 mi';
+  if (hudTimer) hudTimer.textContent = '00:00';
+
+  syncHudGpsModeBadge();
 
   // Announce departure briefing via Web Speech API
-  updateNavStep(0, true);
+  updateNavStep(0, true, !isSimulationMode);
 
-  const hudTimer = document.getElementById('hudTimer');
+  // Start real hardware GPS watchPosition tracking
+  if ('geolocation' in navigator) {
+    if (gpsWatchId !== null) {
+      navigator.geolocation.clearWatch(gpsWatchId);
+    }
+    gpsWatchId = navigator.geolocation.watchPosition(
+      handleRealGpsPositionUpdate,
+      (err) => {
+        console.warn('[GPS] watchPosition warning:', err);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 10000
+      }
+    );
+  }
+
+  // Real 1-second workout stopwatch
+  clearInterval(navInterval);
   navInterval = setInterval(() => {
-    if (navIsPaused) return; // Do not advance when user tapped pause
+    if (navIsPaused) return;
 
-    navSecondsElapsed += 2;
-    const mins = Math.floor(navSecondsElapsed / 60).toString().padStart(2, '0');
+    navSecondsElapsed += 1;
+    const hrs = Math.floor(navSecondsElapsed / 3600);
+    const mins = Math.floor((navSecondsElapsed % 3600) / 60).toString().padStart(2, '0');
     const secs = (navSecondsElapsed % 60).toString().padStart(2, '0');
-    if (hudTimer) hudTimer.textContent = `${mins}:${secs}`;
+    if (hudTimer) {
+      hudTimer.textContent = hrs > 0 ? `${hrs}:${mins}:${secs}` : `${mins}:${secs}`;
+    }
 
-    // Advance maneuver every 6 seconds
-    if (navSecondsElapsed % 6 === 0) {
+    // Only auto-advance maneuvers on a timer if user explicitly toggled "Sim Preview" mode
+    if (isSimulationMode && navSecondsElapsed % 6 === 0) {
       navStepIndex++;
       if (navStepIndex >= activeRoute.maneuvers.length) {
         const totalMins = Math.floor(navSecondsElapsed / 60);
         const totalSecs = navSecondsElapsed % 60;
         const timeBrief = totalMins > 0 ? `${totalMins} minutes ${totalSecs} seconds` : `${totalSecs} seconds`;
         stopNavigation();
-        speakInstruction(`Congratulations! You completed your ${activeRoute.distance} mile safe loop in ${timeBrief}. Average pace: ${currentTargetPace} per mile. Great run!`, { haptic: [80, 80, 80, 80, 150] });
+        speakInstruction(`Route preview completed for ${activeRoute.distance} mile safe loop in ${timeBrief}.`, { haptic: [80, 80, 80, 80, 150] });
         return;
       }
-      updateNavStep(navStepIndex, false);
+      updateNavStep(navStepIndex, false, false);
     }
   }, 1000);
 }
@@ -2134,6 +2417,11 @@ function stopNavigation() {
   isNavigating = false;
   navIsPaused = false;
   clearInterval(navInterval);
+  if (gpsWatchId !== null && 'geolocation' in navigator) {
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+  }
+  releaseScreenWakeLock();
 
   const btnNavIcon = document.getElementById('btnNavIcon');
   const btnNavLabel = document.getElementById('btnNavLabel');
@@ -2158,15 +2446,20 @@ function stopNavigation() {
     runnerMarker = null;
   }
 
-  // Auto-save completed workout to Firestore and evaluate badges
-  if (navSecondsElapsed >= 6) {
+  // Save completed workout to Firestore and evaluate badges
+  const recordedMiles = liveGpsDistanceMiles >= 0.05
+    ? Number(liveGpsDistanceMiles.toFixed(2))
+    : Number(activeRoute.distance || currentSelectedDistance || 3.1);
+
+  if (navSecondsElapsed >= 5) {
+    const livePace = computeLiveGpsPace(recordedMiles, navSecondsElapsed);
     const workoutData = {
       routeTitle: activeRoute.title,
-      distance: Number(activeRoute.distance || currentSelectedDistance || 3.1),
+      distance: recordedMiles,
       durationSeconds: navSecondsElapsed,
-      avgPace: currentTargetPace,
-      avgHeartRate: 148,
-      calories: Math.round((navSecondsElapsed / 60) * 11.5) + 14,
+      avgPace: livePace.secondsPerMile ? livePace.formatted : currentTargetPace,
+      avgHeartRate: currentLiveSensorHr || 148,
+      calories: Math.max(12, Math.round(recordedMiles * 105)),
       completedAt: new Date().toISOString()
     };
     evaluateBadgesFromWorkouts([workoutData], { weather: currentWeatherData }, (badge) => {
@@ -2181,7 +2474,7 @@ function stopNavigation() {
   }
 }
 
-function updateNavStep(index, isFirstStep = false) {
+function updateNavStep(index, isFirstStep = false, isRealGpsMode = true) {
   const maneuvers = activeRoute.maneuvers;
   const m = maneuvers[index % maneuvers.length];
 
@@ -2204,16 +2497,16 @@ function updateNavStep(index, isFirstStep = false) {
   let hapticPattern = [50, 60, 50];
 
   if (isFirstStep) {
-    speechText = `Starting safe voice navigation on ${activeRoute.title}. Target distance: ${activeRoute.distance} miles at ${currentTargetPace} pace. ${m.text}. ${m.note || ''}`;
+    speechText = `Live GPS tracking active on ${activeRoute.title}. Target distance: ${activeRoute.distance} miles at ${currentTargetPace} pace. ${m.text}. ${m.note || ''}`;
     hapticPattern = [70, 80, 70];
   } else {
     speechText = `${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note ? m.note + '.' : ''}`;
     if (m.icon && (m.icon.includes('turn-up-right') || m.icon.includes('arrow-right'))) {
-      hapticPattern = [50, 60, 50]; // Turn right
+      hapticPattern = [50, 60, 50];
     } else if (m.icon && m.icon.includes('arrow-left')) {
-      hapticPattern = [100, 60, 50]; // Turn left
+      hapticPattern = [100, 60, 50];
     } else if (m.icon && m.icon.includes('flag')) {
-      hapticPattern = [80, 80, 80, 80, 120]; // Finish line
+      hapticPattern = [80, 80, 80, 80, 120];
     }
   }
 
@@ -2226,41 +2519,21 @@ function updateNavStep(index, isFirstStep = false) {
     runnerDot.setAttribute('cx', cx.toFixed(1));
   }
 
-  // Position simulated runner marker along route path
   const pathPoints = activeRoute.path;
   const ptIndex = Math.min(index, pathPoints.length - 1);
-  const curPoint = pathPoints[ptIndex];
+  const curPoint = currentUserGpsCoord && isRealGpsMode ? currentUserGpsCoord : pathPoints[ptIndex];
+  updateRunnerMapMarker(curPoint);
 
-  if (googleMap && markerLib && markerLib.AdvancedMarkerElement) {
-    if (!runnerMarker) {
-      const runnerDotEl = document.createElement('div');
-      runnerDotEl.className = 'runner-pulse';
-      runnerDotEl.innerHTML = `
-        <div style="background-color:#E15A2B; width:22px; height:22px; border-radius:50%; border:3px solid #ffffff; box-shadow:0 2px 10px rgba(225,90,43,0.9); display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px;">
-          <i class="fa-solid fa-person-running"></i>
-        </div>
-      `;
-      runnerMarker = new markerLib.AdvancedMarkerElement({
-        map: googleMap,
-        position: curPoint,
-        title: "Active Runner Location",
-        content: runnerDotEl
-      });
-    } else {
-      runnerMarker.position = curPoint;
-    }
-
-    googleMap.panTo(curPoint);
+  if (!isRealGpsMode) {
+    const distDone = ((index + 1) * (activeRoute.distance / maneuvers.length)).toFixed(2);
+    if (hudDistance) hudDistance.textContent = `${distDone} mi`;
+    if (hudPace) hudPace.textContent = currentTargetPace;
   }
-
-  // Update HUD Telemetry
-  const distDone = ((index + 1) * (activeRoute.distance / maneuvers.length)).toFixed(2);
-  if (hudDistance) hudDistance.textContent = `${distDone} mi`;
-  if (hudPace) hudPace.textContent = currentTargetPace;
   if (hudHR) {
-    const hr = 144 + (index * 2);
-    hudHR.textContent = `${hr} bpm`;
-    currentLiveSensorHr = hr;
+    if (!isBleHrConnected) {
+      currentLiveSensorHr = 144 + (index * 2);
+    }
+    hudHR.textContent = `${currentLiveSensorHr} bpm`;
     renderHeartRateZonesUI();
   }
 }
@@ -2480,6 +2753,21 @@ function setupUIHandlers() {
       if (m) {
         speakInstruction(`Repeating: ${m.dist ? m.dist + ', ' : ''}${m.text}. ${m.note || ''}`, { playChime: true });
       }
+    });
+  }
+
+  // In-Run Toggle Live GPS vs Indoor Sim Preview Mode
+  const btnHudToggleSimMode = document.getElementById('btnHudToggleSimMode');
+  if (btnHudToggleSimMode) {
+    btnHudToggleSimMode.addEventListener('click', () => {
+      isSimulationMode = !isSimulationMode;
+      syncHudGpsModeBadge();
+      playTurnChime();
+      speakInstruction(
+        isSimulationMode
+          ? 'Switched to indoor route preview simulation. Turns will advance automatically every 6 seconds.'
+          : 'Switched to live hardware GPS tracking. Distance, pace, and turns will follow your physical movement.'
+      );
     });
   }
 
@@ -2748,6 +3036,14 @@ function setupUIHandlers() {
     });
   }
 
+  // Locate My Real GPS button
+  const btnLocateMyGps = document.getElementById('btnLocateMyGps');
+  if (btnLocateMyGps) {
+    btnLocateMyGps.addEventListener('click', () => {
+      locateUserRealGpsAndMapLoops();
+    });
+  }
+
   // Recenter button
   const recenterBtn = document.getElementById('btnRecenter');
   if (recenterBtn) {
@@ -3001,6 +3297,72 @@ function setupUIHandlers() {
         btnToggleHealthConnect.textContent = 'Connected';
         btnToggleHealthConnect.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition';
         speakInstruction("Health Connect biometrics synchronized.");
+      }
+    });
+  }
+
+  // Real Web Bluetooth API (BLE GATT 0x180D / 0x2A37) Heart Rate Monitor Pairing
+  const btnConnectBluetoothHr = document.getElementById('btnConnectBluetoothHr');
+  const btnConnectBluetoothHrLabel = document.getElementById('btnConnectBluetoothHrLabel');
+  const bleHrDeviceStatusText = document.getElementById('bleHrDeviceStatusText');
+
+  if (btnConnectBluetoothHr) {
+    btnConnectBluetoothHr.addEventListener('click', async () => {
+      if (isBleHrConnected && bleHrDevice && bleHrDevice.gatt?.connected) {
+        bleHrDevice.gatt.disconnect();
+        isBleHrConnected = false;
+        if (btnConnectBluetoothHrLabel) btnConnectBluetoothHrLabel.textContent = 'Pair Bluetooth Heart Rate Monitor (BLE)';
+        if (bleHrDeviceStatusText) bleHrDeviceStatusText.textContent = 'Disconnected from Bluetooth HR sensor';
+        return;
+      }
+
+      if (!('bluetooth' in navigator) || !navigator.bluetooth) {
+        if (bleHrDeviceStatusText) {
+          bleHrDeviceStatusText.textContent = 'Web Bluetooth requires Chrome on Android, macOS, or Windows.';
+        }
+        speakInstruction('Web Bluetooth is supported in Chrome on Android and desktop. Open in Chrome to pair your BLE heart rate strap or watch.');
+        return;
+      }
+
+      try {
+        if (btnConnectBluetoothHrLabel) btnConnectBluetoothHrLabel.textContent = 'Scanning for BLE Heart Rate Sensor...';
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ services: ['heart_rate'] }]
+        });
+        bleHrDevice = device;
+        device.addEventListener('gattserverdisconnected', () => {
+          isBleHrConnected = false;
+          if (btnConnectBluetoothHrLabel) btnConnectBluetoothHrLabel.textContent = 'Pair Bluetooth Heart Rate Monitor (BLE)';
+          if (bleHrDeviceStatusText) bleHrDeviceStatusText.textContent = 'BLE Sensor Disconnected';
+        });
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('heart_rate');
+        const characteristic = await service.getCharacteristic('heart_rate_measurement');
+        await characteristic.startNotifications();
+
+        characteristic.addEventListener('characteristicvaluechanged', (event) => {
+          const bpm = parseBleHeartRateMeasurement(event.target.value);
+          if (bpm) {
+            currentLiveSensorHr = bpm;
+            const hudHR = document.getElementById('hudHR');
+            if (hudHR) hudHR.textContent = `${bpm} bpm`;
+            renderHeartRateZonesUI();
+          }
+        });
+
+        isBleHrConnected = true;
+        const devName = device.name || 'BLE Heart Rate Monitor';
+        if (btnConnectBluetoothHrLabel) btnConnectBluetoothHrLabel.textContent = `Connected: ${devName} (Tap to Disconnect)`;
+        if (bleHrDeviceStatusText) bleHrDeviceStatusText.textContent = `Streaming live GATT 0x2A37 BPM from ${devName}`;
+        playTurnChime();
+        speakInstruction(`Connected to ${devName}. Streaming live heart rate telemetry.`);
+      } catch (err) {
+        if (btnConnectBluetoothHrLabel) btnConnectBluetoothHrLabel.textContent = 'Pair Bluetooth Heart Rate Monitor (BLE)';
+        if (bleHrDeviceStatusText) {
+          bleHrDeviceStatusText.textContent = 'BLE pairing cancelled or no sensor selected.';
+        }
+        console.warn('[BLE HR] Pairing notice:', err);
       }
     });
   }
@@ -3359,20 +3721,49 @@ function setupSafeGuardHandlers() {
     });
   }
 
-  // Live Simulated SMS Delivery Dispatch
+  // Real Live GPS SMS / Native Share Dispatch
   const btnSendTestSms = document.getElementById('btnSendTestBeaconSms');
   const testSmsToast = document.getElementById('testSmsToast');
   if (btnSendTestSms) {
-    btnSendTestSms.addEventListener('click', () => {
+    btnSendTestSms.addEventListener('click', async () => {
       playTurnChime();
       if (navigator.vibrate) {
-        navigator.vibrate([60, 40, 80]);
+        try { navigator.vibrate([60, 40, 80]); } catch (_) {}
       }
+
+      let coord = currentUserGpsCoord || activeRoute?.center || { lat: 41.3857, lng: -81.7058 };
+      let batteryPct = '88%';
+      try {
+        if ('getBattery' in navigator && typeof navigator.getBattery === 'function') {
+          const bat = await navigator.getBattery();
+          if (bat && Number.isFinite(bat.level)) {
+            batteryPct = `${Math.round(bat.level * 100)}%`;
+          }
+        }
+      } catch (_) {}
+
+      const mapsUrl = `https://www.google.com/maps?q=${coord.lat.toFixed(6)},${coord.lng.toFixed(6)}`;
+      const messageBody = `Pace Plot SafeGuard Live Beacon: I am out on a run (${activeRoute?.title || 'Safe Loop'}, target pace ${currentTargetPace}/mi, battery ${batteryPct}). Live GPS coordinates: ${mapsUrl}`;
+
       if (testSmsToast) {
+        testSmsToast.textContent = `Live GPS link ready (${coord.lat.toFixed(4)}, ${coord.lng.toFixed(4)}) · Battery ${batteryPct}`;
         testSmsToast.classList.remove('hidden');
-        setTimeout(() => testSmsToast.classList.add('hidden'), 4500);
+        setTimeout(() => testSmsToast.classList.add('hidden'), 5000);
       }
-      speakInstruction("SafeGuard live beacon SMS dispatched to emergency contacts with battery status and tracking link.");
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: 'Pace Plot Live GPS Safety Beacon',
+            text: messageBody,
+            url: mapsUrl
+          });
+          return;
+        }
+      } catch (_) {}
+
+      // Fallback to native Android/iOS SMS URI scheme
+      window.location.href = `sms:?body=${encodeURIComponent(messageBody)}`;
     });
   }
 }

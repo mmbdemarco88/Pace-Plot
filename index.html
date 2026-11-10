@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pace Plot - Safe Run & Walk Navigation by Stride Circuit LLC</title>
-  <meta name="description" content="Safe run and walk navigation app prototype featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.">
+  <meta name="description" content="Safe run and walk GPS navigation app featuring street-snapped safe loops, real-time GPS telemetry, turn-by-turn voice guidance, and Bluetooth heart rate zones.">
   <meta property="og:title" content="Pace Plot - Safe Run & Walk Navigation by Stride Circuit LLC">
-  <meta property="og:description" content="Safe run and walk navigation app prototype featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.">
+  <meta property="og:description" content="Safe run and walk GPS navigation app featuring street-snapped safe loops, real-time GPS telemetry, turn-by-turn voice guidance, and Bluetooth heart rate zones.">
   
   <!-- Web App Manifest & Android PWA/TWA Configuration -->
   <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
@@ -229,13 +229,12 @@
       </span>
     </div>
 
-    <!-- Android Status Bar -->
-    <div class="w-full h-8 px-6 pt-1 flex items-center justify-between text-xs font-semibold text-stone-600 dark:text-stone-400 select-none bg-cream dark:bg-stone-900 z-30">
+    <!-- Status Bar (Desktop Frame Preview Only - Hidden on Mobile/Installed App) -->
+    <div class="w-full h-7 px-6 pt-1 hidden sm:flex items-center justify-between text-xs font-semibold text-stone-600 dark:text-stone-400 select-none bg-cream dark:bg-stone-900 z-30">
       <span id="clockDisplay">09:41</span>
       <div class="flex items-center gap-2 text-[10px]">
-        <i class="fa-solid fa-wifi"></i>
-        <i class="fa-solid fa-signal"></i>
-        <i class="fa-solid fa-battery-full text-xs"></i>
+        <i class="fa-solid fa-satellite-dish text-emerald-500"></i>
+        <span>GPS Ready</span>
       </div>
     </div>
 
@@ -376,13 +375,14 @@
                       <i class="fa-solid fa-volume-high text-[9px]"></i>
                       <span>Speaking</span>
                     </span>
-                    <span id="hudWeatherBadge" class="text-[10px] text-sky-300 font-bold flex items-center gap-1 bg-stone-900/90 px-2 py-0.5 rounded-lg border border-stone-800 tabular-nums">
+                     <span id="hudWeatherBadge" class="text-[10px] text-sky-300 font-bold flex items-center gap-1 bg-stone-900/90 px-2 py-0.5 rounded-lg border border-stone-800 tabular-nums">
                       <i id="hudWeatherIcon" class="fa-solid fa-cloud-sun text-amber-400 text-[9px]"></i>
                       <span id="hudWeatherText">64°F · 8% rain</span>
                     </span>
-                    <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                      <i class="fa-solid fa-shield-halved text-[9px]"></i> Safe Path
-                    </span>
+                    <button id="btnHudToggleSimMode" type="button" class="text-[10px] text-emerald-400 font-bold flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg hover:bg-emerald-500/25 transition cursor-pointer" title="Tap to switch between Live Hardware GPS and Indoor Route Preview Simulation">
+                      <i id="hudGpsModeIcon" class="fa-solid fa-satellite-dish text-[9px]"></i>
+                      <span id="hudGpsModeText">Live GPS</span>
+                    </button>
                   </div>
                 </div>
                 <h3 id="navInstructionText" class="text-sm font-extrabold text-white truncate mt-0.5 cursor-pointer hover:text-amber-300 transition" title="Click to repeat audio direction">Turn right onto West Creek Trail</h3>
@@ -520,8 +520,11 @@
             </div>
           </div>
 
-          <!-- Streamlined 2-Button Map Control Stack (Recenter + Map Settings) -->
+          <!-- Streamlined Map Control Stack (Use My GPS + Recenter + Map Settings) -->
           <div class="absolute right-3 bottom-3 flex flex-col gap-2 z-20">
+            <button id="btnLocateMyGps" class="w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/50 shadow-lg backdrop-blur flex items-center justify-center transition cursor-pointer" title="Use My Current Real GPS Location & Map Safe Loops Here">
+              <i class="fa-solid fa-location-arrow text-xs"></i>
+            </button>
             <button id="btnRecenter" class="w-9 h-9 rounded-full bg-white/95 dark:bg-stone-800/95 text-stone-700 dark:text-stone-200 border border-stone-200/80 dark:border-stone-700/80 shadow-lg backdrop-blur flex items-center justify-center hover:bg-stone-50 dark:hover:bg-stone-700 transition cursor-pointer" title="Recenter Route on Map">
               <i class="fa-solid fa-location-crosshairs text-xs"></i>
             </button>
@@ -773,12 +776,12 @@
             </div>
           </div>
 
-          <button id="btnSendTestBeaconSms" class="w-full py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-700/60 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition">
-            <i class="fa-solid fa-paper-plane text-terracotta text-xs"></i>
-            <span>Simulate Sending Test SMS Beacon</span>
+          <button id="btnSendTestBeaconSms" class="w-full py-2.5 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <span>Send Live GPS Coordinates via SMS / Share</span>
           </button>
           <div id="testSmsToast" class="hidden text-center text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-            <i class="fa-solid fa-check"></i> Simulated SMS dispatched to Sarah Jenkins and Mark Miller!
+            <i class="fa-solid fa-check"></i> Live GPS SMS link ready for dispatch!
           </div>
         </div>
 
@@ -936,10 +939,13 @@
           </div>
         </div>
 
-        <!-- Live Metrics Preview -->
+        <!-- Live Metrics & Web Bluetooth Heart Rate Sensor Pairing -->
         <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
           <div class="flex items-center justify-between gap-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics (Sensor Telemetry)</h3>
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics & BLE Heart Rate</h3>
+              <p id="bleHrDeviceStatusText" class="text-[10px] text-stone-400 mt-0.5">Pair Garmin, Polar, Wahoo, COROS, or Wear OS BLE HR sensor</p>
+            </div>
             <span id="liveBiometricZoneBadge" class="px-2 py-0.5 rounded-md text-[10px] font-mono tabular-nums font-bold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/25">
               Z3 Tempo · 79% HRmax
             </span>
@@ -959,6 +965,11 @@
               <p id="healthCalories" class="text-base font-extrabold font-mono tabular-nums text-amber-500 mt-0.5">324 <span class="text-[10px] font-sans font-normal text-stone-400">kcal</span></p>
             </div>
           </div>
+
+          <button id="btnConnectBluetoothHr" type="button" class="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer">
+            <i class="fa-brands fa-bluetooth-b text-sm"></i>
+            <span id="btnConnectBluetoothHrLabel">Pair Bluetooth Heart Rate Monitor (BLE)</span>
+          </button>
         </div>
 
         <!-- GPX Export & Share Action Card -->
@@ -2118,10 +2129,9 @@
     </div>
   </main>
 
-  <!-- Prototype Footnote -->
-  <footer class="mt-4 text-center text-xs text-stone-600 dark:text-stone-400 max-w-md transition-colors duration-200">
-    <p><strong class="text-stone-900 dark:text-stone-200">Pace Plot</strong> interactive Android client prototype for Stride Circuit LLC.</p>
-    <p class="text-[11px] text-stone-500 mt-0.5">Click <strong>"Start Voice Nav"</strong> to experience turn-by-turn spoken audio & live GPS runner simulation.</p>
+  <!-- Desktop Footnote (Hidden on mobile/installed app) -->
+  <footer class="mt-3 hidden sm:block text-center text-xs text-stone-600 dark:text-stone-400 max-w-md transition-colors duration-200">
+    <p><strong class="text-stone-900 dark:text-stone-200">Pace Plot</strong> by Stride Circuit LLC · Live GPS Navigation, Street-Snapped Safe Loops & Bluetooth HR Telemetry.</p>
   </footer>
 
   <!-- Inline Service Worker Registration for Static PWA Scanners (PWABuilder / Bubblewrap) -->
