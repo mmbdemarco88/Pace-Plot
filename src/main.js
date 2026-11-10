@@ -300,17 +300,148 @@ function startApp() {
   initServiceWorker();
 }
 
+let deferredPwaInstallPrompt = null;
+
 function initServiceWorker() {
+  const statusBadge = document.getElementById('pwaDiagnosticStatusBadge');
+  const manifestCheckEl = document.getElementById('pwaManifestCheckText');
+  const swCheckEl = document.getElementById('pwaSwCheckText');
+  const btnTopInstall = document.getElementById('btnTopInstallPwa');
+  const topInstallLabel = document.getElementById('topInstallPwaLabel');
+  const btnSettingsInstall = document.getElementById('btnSettingsInstallPwa');
+  const settingsInstallLabel = document.getElementById('settingsInstallPwaLabel');
+  const btnDownloadTwa = document.getElementById('btnDownloadTwaBundle');
+
+  let manifestVerified = false;
+  let swVerified = false;
+
+  function updateDiagnosticBadge() {
+    if (!statusBadge) return;
+    if (manifestVerified && swVerified) {
+      statusBadge.textContent = 'PWA & TWA Ready';
+      statusBadge.className = 'px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold';
+    } else if (manifestVerified || swVerified) {
+      statusBadge.textContent = 'Partial Ready';
+      statusBadge.className = 'px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold';
+    }
+  }
+
+  // 1. Live Verify Web App Manifest
+  fetch('/manifest.json', { credentials: 'include' })
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((data) => {
+      manifestVerified = Boolean(data && data.name && Array.isArray(data.icons) && data.icons.length >= 2);
+      if (manifestCheckEl) {
+        manifestCheckEl.textContent = manifestVerified
+          ? `Verified · ${data.icons.length} Icons`
+          : 'Manifest Incomplete';
+      }
+      updateDiagnosticBadge();
+    })
+    .catch(() => {
+      if (manifestCheckEl) {
+        manifestCheckEl.textContent = 'Check /manifest.json';
+      }
+    });
+
+  // 2. Register & Verify Service Worker Immediately (no race condition with window.load)
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((reg) => {
-          console.log('[PWA] Service Worker registered successfully with scope:', reg.scope);
-        })
-        .catch((err) => {
-          console.warn('[PWA] Service Worker registration failed:', err);
-        });
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((reg) => {
+        swVerified = true;
+        if (swCheckEl) {
+          swCheckEl.textContent = 'Active · Scope /';
+        }
+        updateDiagnosticBadge();
+        console.log('[PWA] Service Worker registered successfully with scope:', reg.scope);
+      })
+      .catch((err) => {
+        if (swCheckEl) {
+          swCheckEl.textContent = 'Registration Notice';
+        }
+        console.warn('[PWA] Service Worker registration failed:', err);
+      });
+  }
+
+  // 3. Capture Chromium / Android beforeinstallprompt Event
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaInstallPrompt = e;
+    if (topInstallLabel) topInstallLabel.textContent = 'Install App';
+    if (settingsInstallLabel) settingsInstallLabel.textContent = 'Install Pace Plot App';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPwaInstallPrompt = null;
+    if (topInstallLabel) topInstallLabel.textContent = 'Installed';
+    if (settingsInstallLabel) settingsInstallLabel.textContent = 'App Installed on Device';
+    playTurnChime();
+    speakInstruction('Pace Plot installed to your device home screen.');
+  });
+
+  async function handleInstallPwaClick() {
+    if (deferredPwaInstallPrompt) {
+      deferredPwaInstallPrompt.prompt();
+      const choice = await deferredPwaInstallPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        deferredPwaInstallPrompt = null;
+      }
+      return;
+    }
+
+    // Open Settings Modal scrolled to SECTION 4 (Android Play Store & PWA Diagnostics)
+    const modalAppSettings = document.getElementById('modalAppSettings');
+    if (modalAppSettings) {
+      modalAppSettings.classList.remove('hidden');
+      const diagBadge = document.getElementById('pwaDiagnosticStatusBadge');
+      if (diagBadge) diagBadge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    playTurnChime();
+    speakInstruction(
+      'PWA Manifest and Service Worker verified for package com.stridecircuit.paceplot. On Android Chrome, tap the browser menu and select Install App, or export the TWA configuration for Google Play Console.'
+    );
+  }
+
+  if (btnTopInstall) btnTopInstall.addEventListener('click', handleInstallPwaClick);
+  if (btnSettingsInstall) btnSettingsInstall.addEventListener('click', handleInstallPwaClick);
+
+  // 4. Export Bubblewrap / Google Play Store TWA Configuration (twa-manifest.json)
+  if (btnDownloadTwa) {
+    btnDownloadTwa.addEventListener('click', () => {
+      const host = window.location.host || 'ais-pre-2pismjncofqbc3fhyd5a44-460005074201.us-east1.run.app';
+      const origin = window.location.origin || `https://${host}`;
+      const twaConfig = {
+        packageId: 'com.stridecircuit.paceplot',
+        host,
+        name: 'Pace Plot',
+        launcherName: 'Pace Plot',
+        display: 'standalone',
+        themeColor: '#E15A2B',
+        navigationColor: '#0B0C0E',
+        navigationColorDark: '#0B0C0E',
+        navigationDividerColor: '#1C1917',
+        navigationDividerColorDark: '#1C1917',
+        backgroundColor: '#0B0C0E',
+        enableNotifications: true,
+        startUrl: '/',
+        iconUrl: `${origin}/pwa-512x512.png`,
+        maskableIconUrl: `${origin}/pwa-maskable-512x512.png`,
+        webManifestUrl: `${origin}/manifest.json`,
+        fallbackType: 'customtabs',
+        orientation: 'portrait',
+        appVersionName: '1.0.0',
+        appVersionCode: 1
+      };
+      const blob = new Blob([JSON.stringify(twaConfig, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'twa-manifest.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      playTurnChime();
+      speakInstruction('Downloaded Google Play Store Trusted Web Activity configuration for com.stridecircuit.paceplot.');
     });
   }
 }

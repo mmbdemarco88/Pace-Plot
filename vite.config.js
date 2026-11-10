@@ -1,4 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import fs from 'node:fs';
+import path from 'node:path';
 
 function spotifyOAuthMiddlewarePlugin() {
   let envVars = {};
@@ -198,6 +201,29 @@ function spotifyOAuthMiddlewarePlugin() {
         return;
       }
 
+      // 4. Explicit PWA Manifest, Service Worker & Digital Asset Links CORS/MIME Support
+      if (pathname === '/manifest.json' || pathname === '/manifest.webmanifest') {
+        const manifestPath = path.resolve(process.cwd(), 'public/manifest.json');
+        if (fs.existsSync(manifestPath)) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.end(fs.readFileSync(manifestPath, 'utf-8'));
+          return;
+        }
+      }
+
+      if (pathname === '/.well-known/assetlinks.json') {
+        const assetLinksPath = path.resolve(process.cwd(), 'public/.well-known/assetlinks.json');
+        if (fs.existsSync(assetLinksPath)) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.end(fs.readFileSync(assetLinksPath, 'utf-8'));
+          return;
+        }
+      }
+
       next();
     });
   };
@@ -217,7 +243,66 @@ function spotifyOAuthMiddlewarePlugin() {
 }
 
 export default defineConfig({
-  plugins: [spotifyOAuthMiddlewarePlugin()],
+  plugins: [
+    spotifyOAuthMiddlewarePlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: false,
+      manifestFilename: 'manifest.webmanifest',
+      includeAssets: [
+        'icon.svg',
+        'apple-touch-icon.png',
+        'pwa-192x192.png',
+        'pwa-512x512.png',
+        'pwa-maskable-512x512.png'
+      ],
+      manifest: {
+        id: 'com.stridecircuit.paceplot',
+        name: 'Pace Plot - Safe Run & Walk Navigation',
+        short_name: 'Pace Plot',
+        description: 'Safe run and walk navigation app featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        background_color: '#0B0C0E',
+        theme_color: '#E15A2B',
+        orientation: 'portrait-primary',
+        lang: 'en-US',
+        dir: 'ltr',
+        prefer_related_applications: false,
+        categories: ['health', 'fitness', 'sports', 'navigation'],
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any'
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true
+      }
+    })
+  ],
   server: {
     host: '0.0.0.0',
     port: 3000,
@@ -227,4 +312,5 @@ export default defineConfig({
     port: 3000,
   },
 });
+
 

@@ -9,9 +9,9 @@
   <meta property="og:description" content="Safe run and walk navigation app prototype featuring AI safe loops, live GPS telemetry, voice guidance, and health biometrics.">
   
   <!-- Web App Manifest & Android PWA/TWA Configuration -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta name="theme-color" content="#0B0C0E">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -187,6 +187,12 @@
 
     <!-- Viewport & Mode Toggles -->
     <div class="flex items-center gap-2">
+      <!-- Install PWA / Play Store Ready Button -->
+      <button id="btnTopInstallPwa" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center gap-1.5 transition font-bold shadow-sm cursor-pointer" title="Install Pace Plot App or View Play Store TWA Status">
+        <i class="fa-brands fa-android"></i>
+        <span id="topInstallPwaLabel">Install App</span>
+      </button>
+
       <!-- Safety Agreement Modal Button -->
       <button id="btnTopSafetyDisclaimer" class="px-2.5 py-1 rounded bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5 transition font-medium border border-stone-300 dark:border-stone-600 shadow-sm cursor-pointer" title="Review Pedestrian Safety Agreement">
         <i class="fa-solid fa-shield-halved text-terracotta"></i>
@@ -2065,6 +2071,49 @@
           </div>
         </div>
 
+        <!-- SECTION 4: Android Play Store & PWA Diagnostics -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+              <i class="fa-brands fa-google-play text-emerald-500"></i>
+              <span>Android Play Store & PWA Diagnostics</span>
+            </div>
+            <span id="pwaDiagnosticStatusBadge" class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold">
+              Checking...
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[10px]">
+            <div class="p-2 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200/70 dark:border-stone-700/70">
+              <div class="text-stone-400 font-semibold">Web App Manifest</div>
+              <div id="pwaManifestCheckText" class="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
+                /manifest.json · OK
+              </div>
+            </div>
+            <div class="p-2 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200/70 dark:border-stone-700/70">
+              <div class="text-stone-400 font-semibold">Service Worker</div>
+              <div id="pwaSwCheckText" class="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
+                /sw.js · Active
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[10px] text-stone-500 dark:text-stone-400 leading-snug">
+            Package ID: <strong class="font-mono text-stone-800 dark:text-stone-200">com.stridecircuit.paceplot</strong> (Free app with In-App PRO Subscriptions). Note: AI Studio preview URLs require publishing via <strong>Deploy to Cloud Run</strong> before external scanners like PWABuilder can crawl without auth redirects.
+          </p>
+
+          <div class="flex gap-2 pt-0.5">
+            <button id="btnSettingsInstallPwa" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <i class="fa-solid fa-download text-[11px]"></i>
+              <span id="settingsInstallPwaLabel">Install App on Device</span>
+            </button>
+            <button id="btnDownloadTwaBundle" type="button" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer" title="Download Bubblewrap TWA Manifest Config for Play Store">
+              <i class="fa-brands fa-google-play text-emerald-500"></i>
+              <span>TWA Config</span>
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   </main>
@@ -2074,6 +2123,13 @@
     <p><strong class="text-stone-900 dark:text-stone-200">Pace Plot</strong> interactive Android client prototype for Stride Circuit LLC.</p>
     <p class="text-[11px] text-stone-500 mt-0.5">Click <strong>"Start Voice Nav"</strong> to experience turn-by-turn spoken audio & live GPS runner simulation.</p>
   </footer>
+
+  <!-- Inline Service Worker Registration for Static PWA Scanners (PWABuilder / Bubblewrap) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+    }
+  </script>
 
   <!-- Application Module Script (Vite Bundled) -->
   <script type="module" src="/src/main.js"></script>
