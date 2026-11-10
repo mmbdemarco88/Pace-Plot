@@ -326,14 +326,17 @@ function initServiceWorker() {
     }
   }
 
-  // 1. Live Verify Web App Manifest
+  // 1. Live Verify Web App Manifest (including Screenshots, Shortcuts, Widgets, Handlers)
   fetch('/manifest.json', { credentials: 'include' })
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
     .then((data) => {
-      manifestVerified = Boolean(data && data.name && Array.isArray(data.icons) && data.icons.length >= 2);
+      const hasIcons = Array.isArray(data?.icons) && data.icons.length >= 2;
+      const hasScreenshots = Array.isArray(data?.screenshots) && data.screenshots.length >= 2;
+      const hasShortcuts = Array.isArray(data?.shortcuts) && data.shortcuts.length >= 1;
+      manifestVerified = Boolean(data && data.name && hasIcons && hasScreenshots && hasShortcuts);
       if (manifestCheckEl) {
         manifestCheckEl.textContent = manifestVerified
-          ? `Verified · ${data.icons.length} Icons`
+          ? `Verified · ${data.icons.length} Icons · ${data.screenshots.length} Shots`
           : 'Manifest Incomplete';
       }
       updateDiagnosticBadge();
@@ -344,17 +347,36 @@ function initServiceWorker() {
       }
     });
 
-  // 2. Register & Verify Service Worker Immediately (no race condition with window.load)
+  // 2. Register & Verify Service Worker + Background Sync + Periodic Sync
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
-      .then((reg) => {
+      .then(async (reg) => {
         swVerified = true;
         if (swCheckEl) {
-          swCheckEl.textContent = 'Active · Scope /';
+          swCheckEl.textContent = 'Active · Sync & Push Ready';
         }
         updateDiagnosticBadge();
         console.log('[PWA] Service Worker registered successfully with scope:', reg.scope);
+
+        // Register One-Off Background Sync when supported
+        try {
+          if ('sync' in reg && reg.sync) {
+            await reg.sync.register('paceplot-workout-sync');
+          }
+        } catch (_) {}
+
+        // Register Periodic Background Sync when supported & permitted
+        try {
+          if ('periodicSync' in reg && reg.periodicSync && navigator.permissions) {
+            const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+            if (status.state === 'granted') {
+              await reg.periodicSync.register('paceplot-weather-safety-sync', {
+                minInterval: 12 * 60 * 60 * 1000
+              });
+            }
+          }
+        } catch (_) {}
       })
       .catch((err) => {
         if (swCheckEl) {
@@ -362,7 +384,80 @@ function initServiceWorker() {
         }
         console.warn('[PWA] Service Worker registration failed:', err);
       });
+
+    // Listen for Service Worker messages (Background Sync, Periodic Sync, Push Notification Clicks)
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (!msg || !msg.type) return;
+      if (msg.type === 'PACEPLOT_NOTIFICATION_ACTION') {
+        if (msg.action === 'view-zones') {
+          const healthTabBtn = document.querySelector('.bottom-nav-btn[data-target="tabHealth"]');
+          if (healthTabBtn) healthTabBtn.click();
+        } else if (msg.action === 'start-run' && !isNavigating) {
+          startNavigation();
+        }
+      }
+    });
   }
+
+  // 2b. Handle LaunchQueue (file_handlers for .gpx route files & launch_handler single-instance focus)
+  if ('launchQueue' in window && window.launchQueue) {
+    window.launchQueue.setConsumer(async (launchParams) => {
+      if (launchParams && Array.isArray(launchParams.files) && launchParams.files.length > 0) {
+        try {
+          const fileHandle = launchParams.files[0];
+          const file = await fileHandle.getFile();
+          const text = await file.text();
+          const trkptRegex = /<trkpt[^>]*lat=["']([^"']+)["'][^>]*lon=["']([^"']+)["']/gi;
+          const importedPath = [];
+          let match;
+          while ((match = trkptRegex.exec(text)) !== null) {
+            const lat = parseFloat(match[1]);
+            const lng = parseFloat(match[2]);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              importedPath.push({ lat, lng });
+            }
+          }
+          if (importedPath.length >= 2) {
+            activeRoute = {
+              ...activeRoute,
+              title: file.name.replace(/\.gpx$/i, '') || 'Imported GPX Route',
+              path: importedPath,
+              center: importedPath[0]
+            };
+            renderRoute(activeRoute);
+            speakInstruction(`Imported GPX route ${activeRoute.title} with ${importedPath.length} waypoints.`);
+          }
+        } catch (err) {
+          console.warn('[PWA] GPX File Handler error:', err);
+        }
+      }
+    });
+  }
+
+  // 2c. Handle PWA Shortcuts, Share Target, Note Taking & Custom Protocol deep-link URL params
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const actionParam = params.get('action');
+    const newNoteParam = params.get('newnote');
+
+    if (tabParam === 'health' || newNoteParam === 'runlog') {
+      setTimeout(() => {
+        const healthBtn = document.querySelector('.bottom-nav-btn[data-target="tabHealth"]');
+        if (healthBtn) healthBtn.click();
+      }, 250);
+    } else if (tabParam === 'safety') {
+      setTimeout(() => {
+        const safetyBtn = document.querySelector('.bottom-nav-btn[data-target="tabSafetyBeacon"]');
+        if (safetyBtn) safetyBtn.click();
+      }, 250);
+    } else if (actionParam === 'start-run') {
+      setTimeout(() => {
+        if (!isNavigating) startNavigation();
+      }, 600);
+    }
+  } catch (_) {}
 
   // 3. Capture Chromium / Android beforeinstallprompt Event
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -417,6 +512,7 @@ function initServiceWorker() {
         name: 'Pace Plot',
         launcherName: 'Pace Plot',
         display: 'standalone',
+        displayOverride: ['window-controls-overlay', 'tabbed', 'standalone', 'minimal-ui'],
         themeColor: '#E15A2B',
         navigationColor: '#0B0C0E',
         navigationColorDark: '#0B0C0E',
@@ -430,8 +526,8 @@ function initServiceWorker() {
         webManifestUrl: `${origin}/manifest.json`,
         fallbackType: 'customtabs',
         orientation: 'portrait',
-        appVersionName: '1.0.0',
-        appVersionCode: 1
+        appVersionName: '1.2.0',
+        appVersionCode: 2
       };
       const blob = new Blob([JSON.stringify(twaConfig, null, 2)], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);

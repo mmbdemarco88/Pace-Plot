@@ -1,0 +1,79 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "ColumnSet",
+          "columns": [
+            {
+              "type": "Column",
+              "width": "auto",
+              "items": [
+                {
+                  "type": "Image",
+                  "url": "/pwa-192x192.png",
+                  "size": "Small",
+                  "style": "Person"
+                }
+              ]
+            },
+            {
+              "type": "Column",
+              "width": "stretch",
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "${title}",
+                  "weight": "Bolder",
+                  "size": "Medium",
+                  "wrap": true
+                },
+                {
+                  "type": "TextBlock",
+                  "text": "${subtitle}",
+                  "isSubtle": true,
+                  "spacing": "None",
+                  "wrap": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        {
+          "title": "Weekly Volume:",
+          "value": "${weeklyMiles}"
+        },
+        {
+          "title": "Zone 2 Aerobic:",
+          "value": "${zone2Time}"
+        },
+        {
+          "title": "Next Safe Loop:",
+          "value": "${nextLoop}"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "title": "Start Safe Voice Run",
+      "verb": "startRun"
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "Open HR Zones",
+      "url": "/?tab=health"
+    }
+  ]
+}
