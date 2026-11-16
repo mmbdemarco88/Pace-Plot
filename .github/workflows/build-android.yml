@@ -30,10 +30,20 @@ jobs:
             npm init -y
           fi
           
+          # Install project dependencies and build production Vite bundle (bundles src/main.js, Firebase, D3, Maps)
+          npm install
+          if npm run | grep -q "build"; then
+            npm run build
+          fi
+          
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
           mkdir -p www
-          cp -r index.html * www/ 2>/dev/null || true
+          if [ -d "dist" ]; then
+            cp -r dist/* www/
+          else
+            cp -r index.html * www/ 2>/dev/null || true
+          fi
           
           cat << 'EOF' > capacitor.config.json
           {
@@ -46,6 +56,12 @@ jobs:
           rm -rf android
           npx cap add android
           npx cap sync android
+
+          # Inject Android Hardware GPS Location & WakeLock Permissions into AndroidManifest.xml
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ] && ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location.gps" android:required="false" />|' "$MANIFEST"
+          fi
 
       - name: Configure Gradle Timeouts and Fix Kotlin Duplicates
         run: |

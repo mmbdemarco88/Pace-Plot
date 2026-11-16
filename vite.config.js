@@ -256,8 +256,16 @@ function spotifyOAuthMiddlewarePlugin() {
       // Ensure manifest.webmanifest also exists in dist/ as an exact copy of public/manifest.json
       const srcManifest = path.resolve(process.cwd(), 'public/manifest.json');
       const distDir = path.resolve(process.cwd(), 'dist');
+      const wwwDir = path.resolve(process.cwd(), 'www');
       if (fs.existsSync(srcManifest) && fs.existsSync(distDir)) {
         fs.copyFileSync(srcManifest, path.resolve(distDir, 'manifest.webmanifest'));
+      }
+      // Mirror compiled production bundle into www/ for Capacitor Android App Bundle (.aab) builds
+      if (fs.existsSync(distDir)) {
+        try {
+          fs.rmSync(wwwDir, { recursive: true, force: true });
+          fs.cpSync(distDir, wwwDir, { recursive: true });
+        } catch (_) {}
       }
     }
   };

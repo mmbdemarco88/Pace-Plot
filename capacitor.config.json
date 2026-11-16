@@ -1,0 +1,6 @@
+{
+  "appId": "com.stridecircuit.paceplot",
+  "appName": "Pace Plot",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
