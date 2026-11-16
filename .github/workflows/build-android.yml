@@ -65,8 +65,11 @@ jobs:
 
       - name: Configure Gradle Timeouts and Fix Kotlin Duplicates
         run: |
-          sed -i 's/versionCode 1/versionCode 2/g' android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "2.0.0"/g' android/app/build.gradle
+          VERSION_CODE=$(( ${{ github.run_number }} + 10 ))
+          VERSION_NAME="2.1.${{ github.run_number }}"
+          sed -i "s/versionCode 1/versionCode ${VERSION_CODE}/g" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"${VERSION_NAME}\"/g" android/app/build.gradle
+          echo "Configured Android Release: versionCode=${VERSION_CODE}, versionName=${VERSION_NAME}"
 
           cat << 'PROPS' >> android/gradle.properties
           systemProp.org.gradle.internal.http.connectionTimeout=180000
