@@ -70,19 +70,26 @@ jobs:
       - name: Install Android SDK Platform 36 & Configure Release Build (API 36 + R8 Shrinking)
         run: |
           # 1. Ensure Android API Level 36 SDK platform is installed on the runner
-          if [ -n "$ANDROID_HOME" ] && [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" > /dev/null 2>&1 || true
+          SDKMANAGER=""
+          for candidate in \
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            $(find /usr/local/lib/android -name sdkmanager 2>/dev/null | head -n 1); do
+            if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+              SDKMANAGER="$candidate"
+              break
+            fi
+          done
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" "platforms;android-36" || true
           fi
 
-          # 2. Target API Level 36 in android/variables.gradle and android/app/build.gradle
+          # 2. Target API Level 36 in android/variables.gradle (do NOT corrupt rootProject.ext references in app/build.gradle)
           if [ -f "android/variables.gradle" ]; then
-            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 36/g' android/variables.gradle
-            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 36/g' android/variables.gradle
+            sed -i -E 's/compileSdkVersion = [0-9]+/compileSdkVersion = 36/g' android/variables.gradle
+            sed -i -E 's/targetSdkVersion = [0-9]+/targetSdkVersion = 36/g' android/variables.gradle
           fi
-          sed -i 's/compileSdk [0-9]*/compileSdk 36/g' android/app/build.gradle
-          sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' android/app/build.gradle
-          sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' android/app/build.gradle
 
           # 3. Auto-increment versionCode (guaranteed > 20)
           VERSION_CODE=$(( ${{ github.run_number }} + 25 ))
@@ -91,20 +98,21 @@ jobs:
           sed -i "s/versionName \"1.0\"/versionName \"${VERSION_NAME}\"/g" android/app/build.gradle
           echo "Configured Android Release: API=36, versionCode=${VERSION_CODE}, versionName=${VERSION_NAME}"
 
-          # 4. Enable R8 Code & Resource Shrinking (reduces APK download size and embeds R8 deobfuscation mapping in .aab)
-          sed -i 's/minifyEnabled false/minifyEnabled true\n            shrinkResources true/g' android/app/build.gradle
+          # 4. Enable R8 Obfuscation & Deobfuscation Mapping (without shrinkResources which can strip Capacitor WebView assets)
+          sed -i 's/minifyEnabled false/minifyEnabled true/g' android/app/build.gradle
           cat << 'PROGUARD' >> android/app/proguard-rules.pro
           -keep class com.getcapacitor.** { *; }
           -keep class com.stridecircuit.paceplot.** { *; }
+          -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
           -dontwarn **
           PROGUARD
 
-          # 5. Increase network timeouts & suppress experimental API 36 warnings
+          # 5. Increase network timeouts & suppress experimental API 36 compile warnings
           cat << 'PROPS' >> android/gradle.properties
           systemProp.org.gradle.internal.http.connectionTimeout=180000
           systemProp.org.gradle.internal.http.socketTimeout=180000
           org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
-          android.suppressUnsupportedCompileSdk=36
+          android.suppressUnsupportedCompileSdk=36,35
           PROPS
 
           cat << 'EOF' >> android/app/build.gradle
@@ -118,12 +126,21 @@ jobs:
           }
           EOF
 
-      - name: Build Android App Bundle (.aab) with Auto-Retry
+      - name: Build Android App Bundle (.aab) with Self-Healing API 36 Fallback
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease -x lint -x lintVitalRelease --no-daemon || \
-          (sleep 5 && ./gradlew bundleRelease -x lint -x lintVitalRelease --no-daemon)
+          if ! ./gradlew bundleRelease -x lint -x lintVitalRelease --no-daemon; then
+            echo "Retrying with compileSdkVersion=35 while keeping targetSdkVersion=36..."
+            if [ -f "variables.gradle" ]; then
+              sed -i -E 's/compileSdkVersion = [0-9]+/compileSdkVersion = 35/g' variables.gradle
+              sed -i -E 's/targetSdkVersion = [0-9]+/targetSdkVersion = 36/g' variables.gradle
+            fi
+            ./gradlew bundleRelease -x lint -x lintVitalRelease --no-daemon || (
+              sed -i 's/minifyEnabled true/minifyEnabled false/g' app/build.gradle
+              ./gradlew bundleRelease -x lint -x lintVitalRelease --no-daemon
+            )
+          fi
 
       - name: Sign App Bundle with Permanent Stride Circuit Key
         run: |
