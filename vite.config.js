@@ -265,6 +265,11 @@ function spotifyOAuthMiddlewarePlugin() {
         try {
           fs.rmSync(wwwDir, { recursive: true, force: true });
           fs.cpSync(distDir, wwwDir, { recursive: true });
+          // Remove chat attachment images and web-only screenshots from Android www/ to keep APK lean
+          fs.rmSync(path.resolve(wwwDir, 'assets/aistudio'), { recursive: true, force: true });
+          fs.rmSync(path.resolve(wwwDir, 'screenshot-narrow.png'), { force: true });
+          fs.rmSync(path.resolve(wwwDir, 'screenshot-wide.png'), { force: true });
+          fs.rmSync(path.resolve(wwwDir, 'screenshot-health.png'), { force: true });
         } catch (_) {}
       }
     }
@@ -275,6 +280,9 @@ export default defineConfig({
   plugins: [
     spotifyOAuthMiddlewarePlugin()
   ],
+  build: {
+    emptyOutDir: true
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,

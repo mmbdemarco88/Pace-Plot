@@ -30,7 +30,8 @@ jobs:
             npm init -y
           fi
           
-          # Install project dependencies and build production Vite bundle (bundles src/main.js, Firebase, D3, Maps)
+          # Clean previous build outputs and build lean production Vite bundle
+          rm -rf dist www
           npm install
           if npm run | grep -q "build"; then
             npm run build
@@ -44,6 +45,8 @@ jobs:
           else
             cp -r index.html * www/ 2>/dev/null || true
           fi
+          # Strip chat attachments & web-only screenshots from Android APK assets
+          rm -rf www/assets/aistudio www/screenshot-*.png
           
           cat << 'EOF' > capacitor.config.json
           {
@@ -57,24 +60,51 @@ jobs:
           npx cap add android
           npx cap sync android
 
-          # Inject Android Hardware GPS Location & WakeLock Permissions into AndroidManifest.xml
+          # Inject Android Hardware GPS Location Permissions & mark all location features optional (android:required="false")
+          # so Wi-Fi tablets/Chromebooks without dedicated GPS chips remain supported in Google Play
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MANIFEST" ] && ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
-            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location.gps" android:required="false" />|' "$MANIFEST"
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location" android:required="false" />\n    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\n    <uses-feature android:name="android.hardware.location.network" android:required="false" />|' "$MANIFEST"
           fi
 
-      - name: Configure Gradle Timeouts and Fix Kotlin Duplicates
+      - name: Install Android SDK Platform 36 & Configure Release Build (API 36 + R8 Shrinking)
         run: |
-          VERSION_CODE=$(( ${{ github.run_number }} + 10 ))
-          VERSION_NAME="2.1.${{ github.run_number }}"
+          # 1. Ensure Android API Level 36 SDK platform is installed on the runner
+          if [ -n "$ANDROID_HOME" ] && [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" > /dev/null 2>&1 || true
+          fi
+
+          # 2. Target API Level 36 in android/variables.gradle and android/app/build.gradle
+          if [ -f "android/variables.gradle" ]; then
+            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 36/g' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 36/g' android/variables.gradle
+          fi
+          sed -i 's/compileSdk [0-9]*/compileSdk 36/g' android/app/build.gradle
+          sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' android/app/build.gradle
+          sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' android/app/build.gradle
+
+          # 3. Auto-increment versionCode (guaranteed > 20)
+          VERSION_CODE=$(( ${{ github.run_number }} + 25 ))
+          VERSION_NAME="2.2.${{ github.run_number }}"
           sed -i "s/versionCode 1/versionCode ${VERSION_CODE}/g" android/app/build.gradle
           sed -i "s/versionName \"1.0\"/versionName \"${VERSION_NAME}\"/g" android/app/build.gradle
-          echo "Configured Android Release: versionCode=${VERSION_CODE}, versionName=${VERSION_NAME}"
+          echo "Configured Android Release: API=36, versionCode=${VERSION_CODE}, versionName=${VERSION_NAME}"
 
+          # 4. Enable R8 Code & Resource Shrinking (reduces APK download size and embeds R8 deobfuscation mapping in .aab)
+          sed -i 's/minifyEnabled false/minifyEnabled true\n            shrinkResources true/g' android/app/build.gradle
+          cat << 'PROGUARD' >> android/app/proguard-rules.pro
+          -keep class com.getcapacitor.** { *; }
+          -keep class com.stridecircuit.paceplot.** { *; }
+          -dontwarn **
+          PROGUARD
+
+          # 5. Increase network timeouts & suppress experimental API 36 warnings
           cat << 'PROPS' >> android/gradle.properties
           systemProp.org.gradle.internal.http.connectionTimeout=180000
           systemProp.org.gradle.internal.http.socketTimeout=180000
           org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+          android.suppressUnsupportedCompileSdk=36
           PROPS
 
           cat << 'EOF' >> android/app/build.gradle
