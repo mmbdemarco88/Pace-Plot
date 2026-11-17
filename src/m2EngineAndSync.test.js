@@ -438,7 +438,8 @@ test('F13: hydrateSubscriptionFromCloud and saveActivePlan work cleanly and fire
   const rules = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
   assert.ok(rules.includes("'activeTrainingPlan'"));
   assert.ok(rules.includes("'updatedAt'"));
-  assert.ok(rules.includes('data.trialStartedAt == null || data.trialStartedAt is number'));
+  assert.ok(rules.includes('match /entitlements/{userId}'));
+  assert.ok(rules.includes('allow write: if false;'));
   assert.ok(rules.includes('data.activeTrainingPlan == null || data.activeTrainingPlan is map'));
 });
 

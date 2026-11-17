@@ -596,36 +596,50 @@ export function setupPremiumListeners(callbacks = {}) {
     });
   }
 
-  // Direct Paid PRO Subscription CTA
+  // Paid PRO Subscription CTA (Routes to RevenueCat / Google Play Billing)
   if (btnSubscribe) {
-    btnSubscribe.addEventListener('click', () => {
-      btnSubscribe.disabled = true;
-      btnSubscribe.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Activating PRO...</span>';
-
-      setTimeout(() => {
-        activatePaidSubscription(currentTier);
-        btnSubscribe.disabled = false;
-        btnSubscribe.innerHTML = '<i class="fa-solid fa-crown"></i> <span id="btnSubscribeLabel">PRO Membership Active!</span>';
-
-        if (typeof callbacks.onSuccess === 'function') {
-          callbacks.onSuccess(currentTier);
-        }
-
-        setTimeout(() => {
-          closeUpgradeModal();
+    btnSubscribe.addEventListener('click', async () => {
+      if (typeof callbacks.onPurchaseRequested === 'function') {
+        btnSubscribe.disabled = true;
+        btnSubscribe.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Opening Google Play...</span>';
+        try {
+          await callbacks.onPurchaseRequested(currentTier);
+        } finally {
+          btnSubscribe.disabled = false;
           syncTierUI();
-        }, 700);
-      }, 450);
+        }
+        return;
+      }
+
+      const reasonBanner = document.getElementById('proModalPaywallReason');
+      if (reasonBanner) {
+        reasonBanner.textContent = 'Subscriptions are processed via Google Play Billing in the Pace Plot Android app (RevenueCat).';
+        reasonBanner.classList.remove('hidden');
+      }
     });
   }
 
   if (btnRestore) {
-    btnRestore.addEventListener('click', () => {
-      activatePaidSubscription('annual');
-      if (typeof callbacks.onRestore === 'function') {
-        callbacks.onRestore();
+    btnRestore.addEventListener('click', async () => {
+      if (typeof callbacks.onRestoreRequested === 'function') {
+        await callbacks.onRestoreRequested();
+        return;
       }
-      setTimeout(closeUpgradeModal, 600);
+
+      const currentState = getSubscriptionState();
+      if (currentState.status === SUBSCRIPTION_STATUS.PRO_ACTIVE) {
+        if (typeof callbacks.onRestore === 'function') {
+          callbacks.onRestore();
+        }
+        setTimeout(closeUpgradeModal, 600);
+        return;
+      }
+
+      const reasonBanner = document.getElementById('proModalPaywallReason');
+      if (reasonBanner) {
+        reasonBanner.textContent = 'No active Google Play / RevenueCat subscription found for this account.';
+        reasonBanner.classList.remove('hidden');
+      }
     });
   }
 

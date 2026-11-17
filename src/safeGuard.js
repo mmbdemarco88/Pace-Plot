@@ -146,7 +146,7 @@ export function setupSafeGuardHandlers() {
       const id = getOrCreateBeaconSessionId();
       if (trackingId) trackingId.textContent = id;
       void syncLiveBeaconSession({ active: store.isNavigating });
-      const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://paceplot.app';
+      const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://stridecircuit.com';
       const link = `${origin}/?track=${encodeURIComponent(id)}`;
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {

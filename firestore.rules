@@ -27,18 +27,14 @@ service cloud.firestore {
 
     // Schema Validators
     function isValidUserProfile(data) {
-      let allowedKeys = ['displayName', 'email', 'photoURL', 'subscriptionStatus', 'tier', 'trialStartedAt', 'trialExpiresAt', 'activeTrainingPlan', 'createdAt', 'updatedAt'];
+      let allowedKeys = ['displayName', 'email', 'photoURL', 'activeTrainingPlan', 'createdAt', 'updatedAt'];
       return data.keys().hasAll(['email'])
         && data.keys().hasOnly(allowedKeys)
         && data.email is string && data.email.size() <= 150
         && isValidOptionalString(data, 'displayName', 100)
         && isValidOptionalString(data, 'photoURL', 500)
-        && isValidOptionalString(data, 'subscriptionStatus', 30)
-        && isValidOptionalString(data, 'tier', 20)
         && isValidOptionalString(data, 'createdAt', 64)
         && isValidOptionalString(data, 'updatedAt', 64)
-        && (!('trialStartedAt' in data) || data.trialStartedAt == null || data.trialStartedAt is number)
-        && (!('trialExpiresAt' in data) || data.trialExpiresAt == null || data.trialExpiresAt is number)
         && (!('activeTrainingPlan' in data) || data.activeTrainingPlan == null || data.activeTrainingPlan is map);
     }
 
@@ -86,6 +82,12 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create, update: if isValidId(userId) && isOwner(userId) && isValidUserProfile(request.resource.data);
       allow delete: if isOwner(userId);
+    }
+
+    // Server-managed RevenueCat / Google Play entitlements (read-only to owner, written only by Cloud Functions)
+    match /entitlements/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
     }
 
     // Saved Routes: private to the user (allow read without isValidId so collection list queries with where('userId','==',uid) succeed)
