@@ -7,7 +7,7 @@
   <meta name="description" content="Safe run and walk GPS navigation app featuring street-snapped safe loops, real-time GPS telemetry, turn-by-turn voice guidance, and Bluetooth heart rate zones.">
   <meta property="og:title" content="Pace Plot - Safe Run & Walk Navigation by Stride Circuit LLC">
   <meta property="og:description" content="Safe run and walk GPS navigation app featuring street-snapped safe loops, real-time GPS telemetry, turn-by-turn voice guidance, and Bluetooth heart rate zones.">
-  
+
   <!-- Web App Manifest & Android PWA/TWA Configuration -->
   <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -17,47 +17,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pace Plot">
-  
+
   <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-          },
-          colors: {
-            terracotta: {
-              DEFAULT: '#E15A2B',
-              hover: '#CD4C20',
-              dark: '#B33C14',
-              light: '#FAECE6',
-            },
-            obsidian: {
-              900: '#121418',
-              950: '#0B0C0E',
-            },
-            cream: {
-              DEFAULT: '#FBF9F7',
-              darker: '#F3EFEA',
-            }
-          }
-        }
-      }
-    }
-  </script>
 
   <script>
     // Apply saved theme preference from LocalStorage immediately to prevent FOUC
@@ -74,96 +38,12 @@
       }
     })();
   </script>
-
-  <style>
-    /* Custom scrollbars */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    .dark ::-webkit-scrollbar-thumb { background: #475569; }
-
-    /* Map container sizing */
-    #mapWrapper {
-      position: relative;
-      flex: 1 1 0%;
-      min-height: 320px;
-      width: 100%;
-      height: 100%;
-    }
-    #map {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      width: 100%;
-      height: 100%;
-      min-height: 320px;
-      z-index: 10;
-    }
-    .gm-style, .leaflet-container {
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    /* Pulse animation for active runner dot */
-    @keyframes pulse-ring {
-      0% { transform: scale(0.8); opacity: 0.95; }
-      100% { transform: scale(2.4); opacity: 0; }
-    }
-    .runner-pulse {
-      position: relative;
-    }
-    .runner-pulse::after {
-      content: '';
-      position: absolute;
-      top: -8px; left: -8px; right: -8px; bottom: -8px;
-      border-radius: 50%;
-      background-color: #C84B1A;
-      animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-    }
-
-    /* Spotify Equalizer Bars Animation (Active Playback Only) */
-    @keyframes spotify-eq {
-      0%, 100% { transform: scaleY(0.28); }
-      50% { transform: scaleY(1); }
-    }
-    .eq-bar {
-      transform-origin: bottom;
-      transform: scaleY(0.3);
-      transition: transform 150ms ease;
-    }
-    .eq-playing .eq-bar-1 { animation: spotify-eq 0.65s ease-in-out infinite; }
-    .eq-playing .eq-bar-2 { animation: spotify-eq 0.5s ease-in-out 0.15s infinite; }
-    .eq-playing .eq-bar-3 { animation: spotify-eq 0.75s ease-in-out 0.28s infinite; }
-
-    /* Light Mode Surface Refinements for Floating Map Widgets */
-    html.light #mapWeatherBadge,
-    html.light #mapSpotifyFloatingPill,
-    html.light #mapTapHint {
-      background-color: rgba(255, 255, 255, 0.94);
-      color: #1c1917;
-      border-color: rgba(214, 211, 209, 0.9);
-      box-shadow: 0 8px 20px rgba(28, 25, 23, 0.12);
-    }
-    html.light #mapWeatherBadge #weatherTempDisplay,
-    html.light #mapSpotifyFloatingPill #mapSpotifyTrackTitle {
-      color: #1c1917;
-    }
-    html.light #mapWeatherBadge #weatherRainContainer {
-      color: #0284c7;
-    }
-    html.light #btnMapQuickSpotify {
-      background-color: rgba(255, 255, 255, 0.95);
-      border-color: rgba(214, 211, 209, 0.9);
-    }
-  </style>
-  <script type="module" crossorigin src="/assets/index-D8Vp3eyB.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CIGW-MKW.css">
+  <script type="module" crossorigin src="/assets/index-Bbs7ZbUC.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DMARjN0e.css">
 </head>
 <body class="bg-stone-200 dark:bg-stone-950 sm:bg-stone-200/90 sm:dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-0 sm:p-4 transition-colors duration-200">
 
-  <!-- Desktop Top Bar: Prototype Controls (Hidden on mobile screens) -->
+    <!-- Desktop Top Bar: Prototype Controls (Hidden on mobile screens) -->
   <header class="w-full max-w-5xl mb-2.5 hidden sm:flex flex-wrap items-center justify-between gap-3 px-4 py-2 bg-white/95 dark:bg-stone-800/90 text-stone-800 dark:text-stone-200 rounded-xl backdrop-blur border border-stone-300 dark:border-stone-700/60 shadow-lg text-sm transition-colors duration-200">
     <div class="flex items-center gap-2">
       <div class="w-7 h-7 rounded-lg bg-terracotta flex items-center justify-center text-white font-bold text-xs shadow-md">
@@ -267,10 +147,11 @@
       </div>
     </nav>
 
+
+
     <!-- Content Views (Tabs) -->
     <div class="flex-1 relative flex flex-col overflow-hidden">
-      
-      <!-- ========================================== -->
+            <!-- ========================================== -->
       <!-- TAB 1: MAP & ROUTE PLANNER (Primary View) -->
       <!-- ========================================== -->
       <section id="tabPlanner" class="tab-content absolute inset-0 flex flex-col z-20">
@@ -682,7 +563,8 @@
         </div>
       </section>
 
-      <!-- ========================================== -->
+
+            <!-- ========================================== -->
       <!-- TAB 2: SAFGUARD & EMERGENCY BEACON (PREMIUM) -->
       <!-- ========================================== -->
       <section id="tabSafetyBeacon" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
@@ -872,7 +754,8 @@
         </div>
       </section>
 
-      <!-- ========================================== -->
+
+            <!-- ========================================== -->
       <!-- TAB 3: HEALTH & WATCH CONNECT -->
       <!-- ========================================== -->
       <section id="tabHealth" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
@@ -1206,7 +1089,7 @@
           <!-- Goal Distance Selector Buttons -->
           <div>
             <label class="block text-[11px] font-semibold text-stone-600 dark:text-stone-300 mb-1.5">Select Target Distance or Goal:</label>
-            <div class="grid grid-cols-4 gap-1.5 text-xs font-bold text-center">
+            <div class="grid grid-cols-5 gap-1.5 text-xs font-bold text-center">
               <button class="btn-plan-goal py-2 px-1 rounded-xl bg-terracotta text-white shadow-sm transition cursor-pointer active" data-goal="5k">
                 5K (3.1m)
               </button>
@@ -1215,6 +1098,9 @@
               </button>
               <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="half">
                 Half (13.1m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="marathon">
+                Full (26.2m)
               </button>
               <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="base">
                 Base Build
@@ -1281,7 +1167,7 @@
               <h4 id="planWeekHeadline" class="font-bold text-stone-900 dark:text-white">Week 1: Aerobic Base & Rhythm</h4>
               <p id="planWeekFocus" class="text-[10px] text-stone-500">Establish aerobic volume & neuromuscular cadence</p>
             </div>
-            <span id="planWeekCompletionStatus" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">2 / 4 Done</span>
+            <span id="planWeekCompletionStatus" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">0 / 4 Done</span>
           </div>
 
           <!-- Day-by-Day Workouts List (Interactive with 'Map Route' 1-click execution) -->
@@ -1303,7 +1189,8 @@
         </div>
       </section>
 
-      <!-- ========================================== -->
+
+            <!-- ========================================== -->
       <!-- TAB 4: RUNRACE USA RACE DIRECTORY -->
       <!-- ========================================== -->
       <section id="tabEvents" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-3 bg-cream dark:bg-stone-900 z-10">
@@ -1460,6 +1347,7 @@
         </div>
       </section>
 
+
     </div>
 
     <!-- Android Bottom Navigation Bar (Material 3 style with 5 tabs) -->
@@ -1505,7 +1393,7 @@
       <div class="w-32 h-1 bg-stone-300 dark:bg-stone-700 rounded-full"></div>
     </div>
 
-    <!-- ========================================== -->
+        <!-- ========================================== -->
     <!-- UPGRADE TO PREMIUM & FREE TRIAL PAYWALL MODAL -->
     <!-- ========================================== -->
     <div id="modalUpgradePremium" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4 transition-all">
@@ -2031,6 +1919,27 @@
             </button>
           </div>
 
+          <!-- Measurement Units Toggle Row (F16) -->
+          <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-900 text-terracotta flex items-center justify-center text-xs">
+                <i class="fa-solid fa-ruler-combined"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white">Measurement Units</div>
+                <p id="settingsUnitsStatusLabel" class="text-[10px] text-stone-500 dark:text-stone-400">Imperial (mi, ft, °F)</p>
+              </div>
+            </div>
+            <div id="btnUnitSystemToggle" class="flex items-center gap-1 bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-700">
+              <button id="unitImperialBtn" type="button" data-unit-system="imperial" class="px-2.5 py-1 rounded-lg bg-terracotta text-white text-[11px] font-bold transition cursor-pointer">
+                Imperial (mi)
+              </button>
+              <button id="unitMetricBtn" type="button" data-unit-system="metric" class="px-2.5 py-1 rounded-lg text-stone-600 dark:text-stone-300 text-[11px] font-bold transition cursor-pointer">
+                Metric (km)
+              </button>
+            </div>
+          </div>
+
           <!-- Spotify Running Audio Row -->
           <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
             <div class="flex items-center gap-2.5">
@@ -2096,6 +2005,7 @@
 
       </div>
     </div>
+
   </main>
 
   <!-- Desktop Footnote (Hidden on mobile/installed app) -->

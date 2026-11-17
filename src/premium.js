@@ -6,6 +6,7 @@
 //   - 'trial_expired' : Free Trial window elapsed (PRO features locked behind paywall)
 //   - 'pro_active'    : Paid PRO subscriber (PRO features permanently unlocked)
 // ----------------------------------------------------
+import { auth, syncUserProfileState } from './firebase.js';
 
 const LOCAL_STORAGE_PREMIUM_KEY = 'paceplot_is_premium';
 const LOCAL_STORAGE_TIER_KEY = 'paceplot_premium_tier';
@@ -102,7 +103,7 @@ export function getSubscriptionState(now = Date.now(), customStorage = null) {
     storedStatus === SUBSCRIPTION_STATUS.TRIAL_EXPIRED ||
     trialExpiresAt > 0
   ) {
-    if (trialExpiresAt > now && storedStatus !== SUBSCRIPTION_STATUS.TRIAL_EXPIRED) {
+    if (Number.isFinite(trialExpiresAt) && trialExpiresAt > now && storedStatus !== SUBSCRIPTION_STATUS.TRIAL_EXPIRED) {
       const remainingMs = trialExpiresAt - now;
       return {
         status: SUBSCRIPTION_STATUS.TRIAL_ACTIVE,
@@ -131,8 +132,8 @@ export function getSubscriptionState(now = Date.now(), customStorage = null) {
       isExpired: true,
       canStartTrial: false,
       tier,
-      trialStartedAt,
-      trialExpiresAt,
+      trialStartedAt: Number.isFinite(trialStartedAt) ? trialStartedAt : null,
+      trialExpiresAt: Number.isFinite(trialExpiresAt) ? trialExpiresAt : null,
       remainingMs: 0,
       remainingText: 'Trial Expired'
     };
@@ -180,6 +181,77 @@ function notifyPremiumListeners() {
   });
 }
 
+function syncSubscriptionToCloud(state) {
+  try {
+    if (auth?.currentUser && state) {
+      syncUserProfileState({
+        subscriptionStatus: state.status,
+        tier: state.tier || 'annual',
+        trialStartedAt: state.trialStartedAt ?? null,
+        trialExpiresAt: state.trialExpiresAt ?? null
+      }).catch(() => {});
+    }
+  } catch (_) {}
+}
+
+export function hydrateSubscriptionFromCloud(profileData, customStorage = null) {
+  const store = getStorage(customStorage);
+  if (!profileData || typeof profileData !== 'object') {
+    return getSubscriptionState(Date.now(), store);
+  }
+
+  const cloudStatus = profileData.subscriptionStatus;
+  const validStatuses = Object.values(SUBSCRIPTION_STATUS);
+  if (!validStatuses.includes(cloudStatus)) {
+    return getSubscriptionState(Date.now(), store);
+  }
+
+  const localState = getSubscriptionState(Date.now(), store);
+  if (cloudStatus === SUBSCRIPTION_STATUS.FREE && localState.status === SUBSCRIPTION_STATUS.PRO_ACTIVE) {
+    return localState;
+  }
+
+  const cloudTier = profileData.tier === 'monthly' || profileData.tier === 'annual' ? profileData.tier : currentTier;
+  currentTier = cloudTier;
+  safeSetItem(store, LOCAL_STORAGE_TIER_KEY, cloudTier);
+
+  if (cloudStatus === SUBSCRIPTION_STATUS.PRO_ACTIVE) {
+    safeSetItem(store, LOCAL_STORAGE_STATUS_KEY, SUBSCRIPTION_STATUS.PRO_ACTIVE);
+    safeSetItem(store, LOCAL_STORAGE_PREMIUM_KEY, 'true');
+  } else if (cloudStatus === SUBSCRIPTION_STATUS.TRIAL_ACTIVE) {
+    safeSetItem(store, LOCAL_STORAGE_STATUS_KEY, SUBSCRIPTION_STATUS.TRIAL_ACTIVE);
+    if (Number.isFinite(Number(profileData.trialStartedAt))) {
+      safeSetItem(store, LOCAL_STORAGE_TRIAL_START_KEY, String(profileData.trialStartedAt));
+    }
+    if (Number.isFinite(Number(profileData.trialExpiresAt))) {
+      safeSetItem(store, LOCAL_STORAGE_TRIAL_EXPIRES_KEY, String(profileData.trialExpiresAt));
+    }
+    const isStillActive = Number(profileData.trialExpiresAt || 0) > Date.now();
+    safeSetItem(store, LOCAL_STORAGE_PREMIUM_KEY, isStillActive ? 'true' : 'false');
+  } else if (cloudStatus === SUBSCRIPTION_STATUS.TRIAL_EXPIRED) {
+    safeSetItem(store, LOCAL_STORAGE_STATUS_KEY, SUBSCRIPTION_STATUS.TRIAL_EXPIRED);
+    if (Number.isFinite(Number(profileData.trialStartedAt))) {
+      safeSetItem(store, LOCAL_STORAGE_TRIAL_START_KEY, String(profileData.trialStartedAt));
+    }
+    if (Number.isFinite(Number(profileData.trialExpiresAt))) {
+      safeSetItem(store, LOCAL_STORAGE_TRIAL_EXPIRES_KEY, String(profileData.trialExpiresAt));
+    }
+    safeSetItem(store, LOCAL_STORAGE_PREMIUM_KEY, 'false');
+  } else {
+    safeRemoveItem(store, LOCAL_STORAGE_STATUS_KEY);
+    safeRemoveItem(store, LOCAL_STORAGE_TRIAL_START_KEY);
+    safeRemoveItem(store, LOCAL_STORAGE_TRIAL_EXPIRES_KEY);
+    safeSetItem(store, LOCAL_STORAGE_PREMIUM_KEY, 'false');
+  }
+
+  if (typeof document !== 'undefined') {
+    updatePremiumUI();
+    syncTierUI();
+  }
+  notifyPremiumListeners();
+  return getSubscriptionState(Date.now(), store);
+}
+
 export function startFreeTrial(durationMs = DEFAULT_TRIAL_DURATION_MS, tier = currentTier, now = Date.now(), customStorage = null) {
   const store = getStorage(customStorage);
   const validDuration = Math.max(1000, Number(durationMs) || DEFAULT_TRIAL_DURATION_MS);
@@ -196,7 +268,9 @@ export function startFreeTrial(durationMs = DEFAULT_TRIAL_DURATION_MS, tier = cu
     syncTierUI();
   }
   notifyPremiumListeners();
-  return getSubscriptionState(now, store);
+  const state = getSubscriptionState(now, store);
+  syncSubscriptionToCloud(state);
+  return state;
 }
 
 export function expireFreeTrialNow(now = Date.now(), customStorage = null) {
@@ -213,7 +287,9 @@ export function expireFreeTrialNow(now = Date.now(), customStorage = null) {
     syncTierUI();
   }
   notifyPremiumListeners();
-  return getSubscriptionState(now, store);
+  const state = getSubscriptionState(now, store);
+  syncSubscriptionToCloud(state);
+  return state;
 }
 
 export function activatePaidSubscription(tier = currentTier, customStorage = null) {
@@ -229,7 +305,9 @@ export function activatePaidSubscription(tier = currentTier, customStorage = nul
     syncTierUI();
   }
   notifyPremiumListeners();
-  return getSubscriptionState(Date.now(), store);
+  const state = getSubscriptionState(Date.now(), store);
+  syncSubscriptionToCloud(state);
+  return state;
 }
 
 export function resetSubscriptionToFree(customStorage = null) {
@@ -244,7 +322,9 @@ export function resetSubscriptionToFree(customStorage = null) {
     syncTierUI();
   }
   notifyPremiumListeners();
-  return getSubscriptionState(Date.now(), store);
+  const state = getSubscriptionState(Date.now(), store);
+  syncSubscriptionToCloud(state);
+  return state;
 }
 
 export function setPremiumStatus(active = true, tier = 'annual', customStorage = null) {

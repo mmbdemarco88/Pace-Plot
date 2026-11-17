@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output (www/ is kept tracked for Capacitor Android builds)
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Agent & IDE scratch files
+.agents/
+.DS_Store
+*.log

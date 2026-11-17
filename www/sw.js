@@ -15,11 +15,19 @@ const PRECACHE_ASSETS = [
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
   '/apple-touch-icon.png',
-  '/screenshot-wide.png',
-  '/screenshot-narrow.png',
-  '/screenshot-health.png',
   '/widgets/paceplot-widget-template.json',
-  '/widgets/paceplot-widget-data.json'
+  '/widgets/paceplot-widget-data.json',
+  '/assets/fa-brands-400-D1LuMI3I.ttf',
+  '/assets/fa-brands-400-D_cYUPeE.woff2',
+  '/assets/fa-regular-400-BjRzuEpd.woff2',
+  '/assets/fa-regular-400-DZaxPHgR.ttf',
+  '/assets/fa-solid-900-CTAAxXor.woff2',
+  '/assets/fa-solid-900-D0aA9rwL.ttf',
+  '/assets/fa-v4compatibility-C9RhG_FT.woff2',
+  '/assets/fa-v4compatibility-CCth-dXg.ttf',
+  '/assets/index-Bbs7ZbUC.js',
+  '/assets/index-DMARjN0e.css',
+  '/assets/leaflet-src-DTmlu4rB.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -91,16 +99,27 @@ async function syncOfflineWorkoutsAndRoutes() {
   try {
     const cache = await caches.open(CACHE_NAME);
     const queuedReq = await cache.match('/__offline_workout_queue');
+    let queuedWorkouts = [];
     if (queuedReq) {
-      await cache.delete('/__offline_workout_queue');
+      try {
+        const parsed = await queuedReq.json();
+        if (Array.isArray(parsed)) {
+          queuedWorkouts = parsed;
+        }
+      } catch (_) {
+        queuedWorkouts = [];
+      }
     }
     const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of clientsList) {
-      client.postMessage({
-        type: 'PACEPLOT_BACKGROUND_SYNC_COMPLETE',
-        tag: WORKOUT_SYNC_TAG,
-        syncedAt: new Date().toISOString()
-      });
+    if (clientsList.length > 0) {
+      for (const client of clientsList) {
+        client.postMessage({
+          type: 'PACEPLOT_BACKGROUND_SYNC_COMPLETE',
+          tag: WORKOUT_SYNC_TAG,
+          queuedWorkouts,
+          syncedAt: new Date().toISOString()
+        });
+      }
     }
   } catch (err) {
     console.warn('[SW] Background sync handler warning:', err);
@@ -108,7 +127,7 @@ async function syncOfflineWorkoutsAndRoutes() {
 }
 
 self.addEventListener('sync', (event) => {
-  if (event.tag === WORKOUT_SYNC_TAG || event.tag === 'sync-workouts' || event.tag) {
+  if (event.tag === WORKOUT_SYNC_TAG || event.tag === 'sync-workouts') {
     event.waitUntil(syncOfflineWorkoutsAndRoutes());
   }
 });
@@ -139,7 +158,7 @@ async function refreshPeriodicRouteAndWeatherData() {
 }
 
 self.addEventListener('periodicsync', (event) => {
-  if (event.tag === PERIODIC_SYNC_TAG || event.tag === 'content-sync' || event.tag) {
+  if (event.tag === PERIODIC_SYNC_TAG || event.tag === 'content-sync') {
     event.waitUntil(refreshPeriodicRouteAndWeatherData());
   }
 });

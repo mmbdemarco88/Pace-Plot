@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotify Connected · Pace Plot</title>
+    <style>
+      body {
+        background: #0c0a09;
+        color: #f5f5f4;
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+      }
+      .card {
+        background: #1c1917;
+        border: 1px solid #292524;
+        border-radius: 20px;
+        padding: 28px;
+        max-width: 340px;
+      }
+      .badge {
+        color: #1db954;
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="badge" id="statusBadge">Spotify Connected</div>
+      <p id="statusMsg" style="font-size: 13px; color: #a8a29e; margin: 0;">
+        Authentication successful. Syncing your running playlists...
+      </p>
+    </div>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || '');
+        var code = params.get('code') || '';
+        var state = params.get('state') || '';
+        var error = params.get('error') || '';
+
+        if (error) {
+          document.getElementById('statusBadge').textContent = 'Spotify Connection Cancelled';
+          document.getElementById('statusBadge').style.color = '#f87171';
+          document.getElementById('statusMsg').textContent = 'Returning to Pace Plot...';
+        }
+
+        var payload = {
+          type: error ? 'OAUTH_AUTH_ERROR' : 'OAUTH_AUTH_SUCCESS',
+          provider: 'spotify',
+          code: code,
+          state: state,
+          error: error
+        };
+
+        if (window.opener) {
+          try {
+            window.opener.postMessage(payload, window.location.origin);
+          } catch (_) {
+            window.opener.postMessage(payload, '*');
+          }
+          setTimeout(function () {
+            window.close();
+          }, 250);
+        } else if (code && !error) {
+          var next = '/?spotify_code=' + encodeURIComponent(code) + (state ? '&state=' + encodeURIComponent(state) : '');
+          window.location.replace(next);
+        } else {
+          window.location.replace('/');
+        }
+      })();
+    </script>
+  </body>
+</html>

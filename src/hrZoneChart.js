@@ -1,7 +1,9 @@
 // ----------------------------------------------------
 // Pace Plot — D3.js Weekly Heart Rate Zone Time Distribution Bar Chart
 // ----------------------------------------------------
-import * as d3 from 'd3';
+import { select } from 'd3-selection';
+import { scaleBand, scaleLinear } from 'd3-scale';
+import { axisLeft } from 'd3-axis';
 import { buildHrZoneChartDataset } from './trainingPlan.js';
 
 /**
@@ -36,7 +38,7 @@ export function renderD3HeartRateZonesBarChart(containerEl, zoneData, options = 
   const innerHeight = height - margin.top - margin.bottom;
 
   // Clear previous contents and mount responsive D3 SVG
-  const root = d3.select(containerEl);
+  const root = select(containerEl);
   root.selectAll('*').remove();
 
   const svg = root
@@ -78,16 +80,14 @@ export function renderD3HeartRateZonesBarChart(containerEl, zoneData, options = 
     .attr('transform', `translate(${margin.left},${margin.top})`);
 
   // X Scale: 5 Heart Rate Zones (Z1 - Z5)
-  const xScale = d3
-    .scaleBand()
+  const xScale = scaleBand()
     .domain(dataset.map((d) => d.code))
     .range([0, innerWidth])
     .padding(0.28);
 
   // Y Scale: Weekly Workout Minutes in Zone
   const yDomainMax = Math.ceil((chartModel.maxMinutes * 1.22) / 10) * 10;
-  const yScale = d3
-    .scaleLinear()
+  const yScale = scaleLinear()
     .domain([0, Math.max(40, yDomainMax)])
     .range([innerHeight, 0]);
 
@@ -107,8 +107,7 @@ export function renderD3HeartRateZonesBarChart(containerEl, zoneData, options = 
     .attr('stroke-width', 1);
 
   // Y-Axis Labels (Minutes)
-  const yAxis = d3
-    .axisLeft(yScale)
+  const yAxis = axisLeft(yScale)
     .ticks(4)
     .tickSize(0)
     .tickPadding(6)

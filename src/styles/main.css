@@ -1,0 +1,91 @@
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* Map container sizing */
+#mapWrapper {
+  position: relative;
+  flex: 1 1 0%;
+  min-height: 320px;
+  width: 100%;
+  height: 100%;
+}
+#map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  z-index: 10;
+}
+.gm-style, .leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Pulse animation for active runner dot */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.95; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.runner-pulse {
+  position: relative;
+}
+.runner-pulse::after {
+  content: '';
+  position: absolute;
+  top: -8px; left: -8px; right: -8px; bottom: -8px;
+  border-radius: 50%;
+  background-color: #C84B1A;
+  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Spotify Equalizer Bars Animation (Active Playback Only) */
+@keyframes spotify-eq {
+  0%, 100% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+}
+@keyframes eq-bounce {
+  0%, 100% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar {
+  transform-origin: bottom;
+  transform: scaleY(0.3);
+  transition: transform 150ms ease;
+}
+.eq-playing .eq-bar-1 { animation: spotify-eq 0.65s ease-in-out infinite; }
+.eq-playing .eq-bar-2 { animation: spotify-eq 0.5s ease-in-out 0.15s infinite; }
+.eq-playing .eq-bar-3 { animation: spotify-eq 0.75s ease-in-out 0.28s infinite; }
+
+/* Light Mode Surface Refinements for Floating Map Widgets */
+html.light #mapWeatherBadge,
+html.light #mapSpotifyFloatingPill,
+html.light #mapTapHint {
+  background-color: rgba(255, 255, 255, 0.94);
+  color: #1c1917;
+  border-color: rgba(214, 211, 209, 0.9);
+  box-shadow: 0 8px 20px rgba(28, 25, 23, 0.12);
+}
+html.light #mapWeatherBadge #weatherTempDisplay,
+html.light #mapSpotifyFloatingPill #mapSpotifyTrackTitle {
+  color: #1c1917;
+}
+html.light #mapWeatherBadge #weatherRainContainer {
+  color: #0284c7;
+}
+html.light #btnMapQuickSpotify {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(214, 211, 209, 0.9);
+}

@@ -1,0 +1,612 @@
+    <!-- ========================================== -->
+    <!-- UPGRADE TO PREMIUM & FREE TRIAL PAYWALL MODAL -->
+    <!-- ========================================== -->
+    <div id="modalUpgradePremium" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-4 transition-all">
+      <div class="bg-stone-900 border border-stone-700 text-white rounded-3xl max-w-sm w-full p-5 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-3.5">
+        
+        <!-- Close button -->
+        <button id="btnCloseUpgradeModal" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+
+        <!-- Header with Golden Crown Icon -->
+        <div class="text-center pt-1 space-y-1">
+          <div class="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-terracotta text-white flex items-center justify-center text-xl shadow-xl shadow-terracotta/30">
+            <i class="fa-solid fa-crown"></i>
+          </div>
+          <div class="text-amber-400 text-[10px] font-black uppercase tracking-wider">
+            <span>Pace Plot PRO</span>
+          </div>
+          <h2 class="text-lg font-black text-white">Elevate Every Stride</h2>
+          <p class="text-xs text-stone-400 max-w-xs mx-auto">
+            Unlock Spotify HUD Running Audio, real-time family tracking, and advanced meteorological radar.
+          </p>
+        </div>
+
+        <!-- Contextual Paywall Reason Banner (Shown when redirected from a locked PRO action) -->
+        <div id="proModalPaywallReason" class="hidden px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-bold text-center">
+        </div>
+
+        <!-- Live Free Trial / Paywall Lifecycle Status Banner -->
+        <div id="proModalTrialStatusBanner" class="p-3 rounded-2xl bg-stone-950/80 border border-amber-500/30 text-stone-200 text-xs space-y-1">
+        </div>
+
+        <!-- Subscription Tier Switcher (Monthly vs Annual) -->
+        <div class="bg-stone-950/80 p-1 rounded-2xl border border-stone-800 flex items-center text-xs font-bold">
+          <button id="btnTierAnnual" class="flex-1 py-2 px-2 rounded-xl bg-terracotta text-white shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>Annual</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded font-extrabold bg-emerald-500 text-stone-950">SAVE 40%</span>
+          </button>
+          <button id="btnTierMonthly" class="flex-1 py-2 px-2 rounded-xl text-stone-400 hover:text-white transition flex items-center justify-center cursor-pointer">
+            <span>Monthly</span>
+          </button>
+        </div>
+
+        <!-- Price Box -->
+        <div class="text-center py-0.5">
+          <div class="flex items-baseline justify-center gap-1 font-mono tabular-nums">
+            <span id="tierPriceLarge" class="text-3xl font-black text-white">$4.16</span>
+            <span id="tierPricePeriod" class="text-xs text-stone-400 font-semibold">/ month</span>
+          </div>
+          <p id="tierBillingDetail" class="text-[11px] text-stone-400 mt-0.5">Billed annually at $49.99/year (Includes 7-day free trial)</p>
+        </div>
+
+        <!-- Exclusive Premium Features Highlights (Includes Spotify Running Audio) -->
+        <div class="space-y-2 text-xs">
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/50 border border-[#1DB954]/30">
+            <div class="w-8 h-8 rounded-xl bg-[#1DB954]/15 text-[#1DB954] flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-brands fa-spotify"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-1.5">
+                <h4 class="font-bold text-white text-xs">Spotify Running HUD & BPM Cadence Sync</h4>
+                <span class="text-[8px] px-1.5 py-0.2 rounded bg-[#1DB954]/20 text-[#1DB954] font-black uppercase">PRO</span>
+              </div>
+              <p class="text-[11px] text-stone-400">Control Spotify playlists directly from the navigation HUD with voice-turn audio ducking & pace-matched BPM.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Real-Time Family Live Tracking</h4>
+              <p class="text-[11px] text-stone-400">Share live GPS beacon, speed, and battery with loved ones. No app download required for them.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-cloud-bolt"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Advanced Weather & AQI Radar</h4>
+              <p class="text-[11px] text-stone-400">Minute-by-minute rain radar, wind gusts, UV index, and air quality index overlay along your route.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-950/40 border border-stone-800">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm flex-shrink-0">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-white text-xs">Automated Fall Detection & Priority SOS</h4>
+              <p class="text-[11px] text-stone-400">Instant accelerometer immobility alerts dispatched with GPS coordinates to your emergency contacts.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons: Free Trial + Paid Subscription + Trial Expiration Simulator -->
+        <div class="space-y-2 pt-1">
+          <button id="btnStartFreeTrial" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:opacity-95 text-stone-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition cursor-pointer">
+            <i class="fa-solid fa-gift"></i>
+            <span>Start 7-Day Free Trial · $0 Today</span>
+          </button>
+
+          <button id="btnSubscribePro" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-terracotta hover:opacity-95 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-terracotta/30 active:scale-95 transition cursor-pointer">
+            <i class="fa-solid fa-bolt"></i>
+            <span id="btnSubscribeLabel">Subscribe to Annual PRO ($49.99/yr)</span>
+          </button>
+
+          <div class="flex items-center justify-center gap-3 text-[10px] text-stone-400 pt-0.5">
+            <span>Cancel anytime</span>
+            <span>•</span>
+            <button id="btnRestorePurchases" class="hover:text-white underline cursor-pointer">Restore Purchase</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- First-Launch Safety Disclaimer & Onboarding Screen ("Pace Plot Safety Agreement") -->
+    <div id="modalSafetyDisclaimer" class="hidden fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div class="w-full max-w-md bg-stone-900 text-stone-100 rounded-3xl border border-stone-700/80 shadow-2xl p-4 sm:p-5 space-y-3.5 max-h-[92vh] overflow-y-auto animate-in zoom-in-95">
+        
+        <!-- Header with Shield Icon & Badge -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-terracotta/20 text-terracotta border border-terracotta/30 flex items-center justify-center text-xl flex-shrink-0 shadow-inner">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[9px] font-black uppercase tracking-wider text-terracotta bg-terracotta/10 px-2 py-0.5 rounded-full border border-terracotta/20">Official Safety Protocol</span>
+              </div>
+              <h2 class="text-base font-extrabold text-white mt-0.5">Pace Plot Safety Agreement</h2>
+              <p class="text-[11px] text-stone-400">Pedestrian right-of-way, road rules & runner awareness</p>
+            </div>
+          </div>
+          <button id="btnCloseDisclaimerModal" class="w-7 h-7 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-xs transition cursor-pointer flex-shrink-0" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- 4 Safety Pillars -->
+        <div class="space-y-2 text-xs">
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-traffic-light"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">Pedestrian Signals & Right-of-Way</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">Pace Plot loops prioritize lit sidewalks and quiet paths, but runners must always obey street signals, crosswalk rules, and yield to vehicular traffic.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-headphones-simple"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">Situational Hearing & Ambient Audio</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">Runners are strongly encouraged to use bone-conduction headphones, ambient passthrough mode, or keep one ear open so emergency sirens and approaching vehicles remain audible.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-vest"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">Low-Light & Night Visibility</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">Wear retroreflective apparel, clip-on safety strobes, or headlamps when running before dawn, at dusk, or after dark along roadway shoulders.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 rounded-2xl bg-stone-950/50 border border-stone-800 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-xs">SafeGuard Companion Disclaimer</h4>
+              <p class="text-[11px] text-stone-400 mt-0.5 leading-snug">SafeGuard live tracking and fall detection are assistive safety companion tools. They do not replace certified 911 local emergency response dispatch services.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkbox Agreement -->
+        <label class="flex items-start gap-2.5 p-2.5 rounded-2xl bg-stone-800/60 border border-stone-700 cursor-pointer select-none">
+          <input type="checkbox" id="checkAcknowledgeSafety" checked class="mt-0.5 accent-terracotta w-4 h-4 rounded cursor-pointer">
+          <span class="text-[11px] text-stone-300 leading-snug">
+            I understand and accept these pedestrian safety responsibilities. I agree to exercise caution, situational awareness, and yield to vehicular traffic on all routes.
+          </span>
+        </label>
+
+        <!-- Accept Button -->
+        <button id="btnAcceptDisclaimer" class="w-full py-3 px-4 rounded-2xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-terracotta/25 active:scale-95 transition cursor-pointer">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>I Agree · Enter Pace Plot</span>
+        </button>
+
+        <div class="text-center text-[10px] text-stone-500">
+          Stride Circuit LLC · Android Mobile Protocol v2.4 · Reviewable anytime in settings
+        </div>
+
+      </div>
+    </div>
+    <div id="badgeUnlockToast" class="hidden fixed top-5 left-4 right-4 z-50 max-w-sm mx-auto bg-stone-950/95 text-white p-3 rounded-2xl border border-amber-500/50 shadow-2xl backdrop-blur-xl flex items-center gap-3 animate-in slide-in-from-top-4">
+      <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg flex-shrink-0 animate-bounce">
+        <i id="toastBadgeIcon" class="fa-solid fa-trophy"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[10px] font-black uppercase tracking-wider text-amber-400">Achievement Unlocked!</div>
+        <h4 id="toastBadgeTitle" class="text-xs font-bold text-white truncate">Early Bird</h4>
+        <p id="toastBadgeDesc" class="text-[10px] text-stone-400 truncate">Run logged before 7:00 AM</p>
+      </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SPOTIFY RUNNING PLAYLIST & API CONNECT MODAL DRAWER       -->
+    <!-- ========================================================= -->
+    <div id="modalSpotifyPlaylists" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+      <div class="bg-stone-900 border-t sm:border border-stone-700/80 text-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl relative max-h-[88vh] overflow-y-auto space-y-3.5">
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-2 border-b border-stone-800 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30 flex items-center justify-center text-lg">
+              <i class="fa-brands fa-spotify"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-white flex items-center gap-1.5">
+                <span>Spotify Running Audio</span>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black uppercase">PRO</span>
+                <span id="spotifyModalStatusText" class="text-[10px] font-mono font-semibold text-[#1DB954]">· Cadence Synth</span>
+              </h3>
+              <p class="text-[11px] text-stone-400">Control your running playlists & pace-synced BPM right from the HUD</p>
+            </div>
+          </div>
+          <button id="btnCloseSpotifyModal" class="w-7 h-7 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- PRO Paywall Gate Banner inside Spotify Drawer (Shown when user is not in active Trial or PRO) -->
+        <div id="spotifyModalProGateBanner" class="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-terracotta/15 to-stone-950 border border-amber-500/40 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-amber-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-lock text-amber-400"></i>
+              <span id="spotifyModalGateHeadline">Locked Under Pace Plot PRO</span>
+            </span>
+            <span id="spotifyModalGateBadge" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">7-Day Free Trial</span>
+          </div>
+          <p id="spotifyModalGateDesc" class="text-[11px] text-stone-300 leading-snug">
+            Start your 7-day free trial or upgrade to Pace Plot PRO to unlock Spotify Web API connection, live HUD playback controls, and BPM cadence matching.
+          </p>
+          <div class="flex items-center gap-2 pt-0.5">
+            <button id="btnSpotifyGateStartTrial" class="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-stone-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer">
+              <i class="fa-solid fa-gift"></i>
+              <span>Start 7-Day Free Trial</span>
+            </button>
+            <button id="btnSpotifyGateOpenPaywall" class="py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition cursor-pointer">
+              <i class="fa-solid fa-crown"></i>
+              <span>PRO Plans</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Spotify Account Connection Card -->
+        <div class="p-3 rounded-2xl bg-stone-950/70 border border-stone-800 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div id="spotifyAccountTitle" class="text-xs font-bold text-white truncate">Spotify Web API Integration</div>
+              <p id="spotifyAccountSub" class="text-[10px] text-stone-400 truncate">Connect your Spotify account to sync personal playlists & active devices</p>
+            </div>
+            <button id="btnSpotifyOAuthConnect" class="px-3 py-1.5 rounded-xl bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 font-extrabold text-xs flex items-center gap-1.5 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer">
+              <i class="fa-brands fa-spotify text-sm"></i>
+              <span id="btnSpotifyOAuthLabel">Connect Spotify</span>
+            </button>
+          </div>
+
+          <!-- Optional Custom Spotify Account Connection Settings -->
+          <div class="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-stone-800/80">
+            <span>Personal Playlists & BPM Cadence Sync</span>
+            <button id="btnToggleSpotifyConfigForm" class="text-[#1DB954] hover:underline font-semibold cursor-pointer">Connection Options</button>
+          </div>
+
+          <div id="spotifyConfigForm" class="hidden pt-2 border-t border-stone-800 space-y-2 text-xs">
+            <div>
+              <label for="inputSpotifyClientId" class="block text-[10px] font-semibold text-stone-300 mb-1">Spotify Client ID (Optional override for OAuth PKCE):</label>
+              <input id="inputSpotifyClientId" type="text" placeholder="Paste Spotify Developer Client ID..." class="w-full px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-white font-mono focus:outline-none focus:border-[#1DB954]">
+            </div>
+            <div>
+              <label for="inputSpotifyDirectToken" class="block text-[10px] font-semibold text-stone-300 mb-1">Or Paste OAuth Bearer Access Token directly:</label>
+              <div class="flex gap-1.5">
+                <input id="inputSpotifyDirectToken" type="password" placeholder="BQA..." class="flex-1 px-2.5 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-white font-mono focus:outline-none focus:border-[#1DB954]">
+                <button id="btnSaveSpotifyConfig" class="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#1DB954] font-bold text-xs whitespace-nowrap cursor-pointer">Save & Sync</button>
+              </div>
+            </div>
+            <p id="spotifyConfigFeedback" class="text-[10px] text-stone-400"></p>
+          </div>
+        </div>
+
+        <!-- Running Playlists Selector -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-stone-300 uppercase tracking-wider text-[10px]">Running Playlists</span>
+            <span id="spotifyActiveBpmReadout" class="font-mono tabular-nums text-[11px] font-bold text-[#1DB954]">168–172 BPM</span>
+          </div>
+          <div id="spotifyPlaylistsGrid" class="grid grid-cols-1 gap-2 max-h-44 overflow-y-auto pr-0.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Track Queue in Selected Playlist -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-[10px] text-stone-400 font-semibold">
+            <span>Tracks in Playlist</span>
+            <span>Tap track to play</span>
+          </div>
+          <div id="spotifyTracksList" class="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Audio Ducking & Volume Controls -->
+        <div class="p-3 rounded-2xl bg-stone-950/60 border border-stone-800 space-y-2.5 text-xs">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-[11px] text-stone-300 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-volume-high text-[#1DB954]"></i>
+              <span>Music Volume</span>
+            </span>
+            <input id="spotifyVolumeSlider" type="range" min="0" max="100" value="82" class="w-36 accent-[#1DB954] h-1.5 bg-stone-700 rounded-lg cursor-pointer">
+            <span id="spotifyVolumeValue" class="font-mono tabular-nums text-[11px] font-bold text-white w-9 text-right">82%</span>
+          </div>
+
+          <div class="flex items-center justify-between pt-1.5 border-t border-stone-800/80">
+            <div>
+              <div class="text-[11px] font-bold text-stone-200">Auto-Duck on Voice Turn Guidance</div>
+              <p class="text-[10px] text-stone-400">Automatically lowers music volume when navigation speaks</p>
+            </div>
+            <input type="checkbox" id="toggleSpotifyAutoDuck" checked class="accent-[#1DB954] w-4 h-4 rounded cursor-pointer">
+          </div>
+
+          <div class="flex items-center justify-between pt-1.5 border-t border-stone-800/80">
+            <div>
+              <div class="text-[11px] font-bold text-stone-200">In-Browser Cadence Synth Audio</div>
+              <p class="text-[10px] text-stone-400">Synthesize live BPM running beats when no external device is active</p>
+            </div>
+            <input type="checkbox" id="toggleSpotifySynthAudio" checked class="accent-[#1DB954] w-4 h-4 rounded cursor-pointer">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- UNIFIED ROUTE, MAP & APP SETTINGS MODAL DRAWER            -->
+    <!-- ========================================================= -->
+    <div id="modalAppSettings" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+      <div class="bg-cream dark:bg-stone-900 border-t sm:border border-stone-200 dark:border-stone-700/80 text-stone-900 dark:text-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl relative max-h-[88vh] overflow-y-auto space-y-4">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-terracotta/15 text-terracotta border border-terracotta/30 flex items-center justify-center text-base">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-black text-stone-900 dark:text-white">Route & Map Settings</h3>
+              <p class="text-[11px] text-stone-500 dark:text-stone-400">Customize distance, target pace, terrain layers & audio</p>
+            </div>
+          </div>
+          <button id="btnCloseSettingsModal" class="w-7 h-7 rounded-full bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white flex items-center justify-center transition cursor-pointer" title="Close Settings">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- SECTION 1: Route & Pace Customization -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-route text-terracotta"></i>
+              <span>Route & Pace Calibration</span>
+            </span>
+            <button id="btnGenerateAiRoute" class="py-1 px-2.5 rounded-lg bg-terracotta/10 hover:bg-terracotta/20 text-terracotta font-extrabold text-[11px] flex items-center gap-1 transition cursor-pointer">
+              <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+              <span>Re-Map AI Loop</span>
+            </button>
+          </div>
+
+          <!-- Custom Distance Slider -->
+          <div id="customSliderContainer" class="pt-1">
+            <div class="flex justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+              <span>Custom Target Distance:</span>
+              <span id="targetDistanceDisplay" class="font-bold font-mono text-terracotta">3.1 miles (5K)</span>
+            </div>
+            <input type="range" id="distanceSlider" min="1.0" max="10.0" step="0.5" value="3.1" class="w-full accent-terracotta h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Target Pace Coach Segmented Selector -->
+          <div class="pt-2 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+              <span>Target Pace Coach:</span>
+              <span id="targetPaceDisplay" class="font-bold font-mono text-terracotta text-xs">8'30" /mi (Base)</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 bg-stone-100 dark:bg-stone-900/80 p-0.5 rounded-xl text-xs font-bold text-center">
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="15:00" data-label="Walk">
+                Walk 15'
+              </button>
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="9:45" data-label="Easy">
+                Easy 9'45"
+              </button>
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active text-[11px] cursor-pointer" data-pace="8:30" data-label="Base">
+                Base 8'30"
+              </button>
+              <button class="pace-preset-btn py-1.5 px-1 rounded-lg text-stone-600 dark:text-stone-300 transition text-[11px] cursor-pointer" data-pace="7:30" data-label="Tempo">
+                Tempo 7'30"
+              </button>
+            </div>
+          </div>
+
+          <!-- Surface & Safety Filters -->
+          <div class="pt-2 border-t border-stone-100 dark:border-stone-700/70 space-y-2">
+            <div class="text-xs font-semibold text-stone-700 dark:text-stone-300">Surface & Lighting Priority:</div>
+            <div class="grid grid-cols-3 gap-1.5 text-xs">
+              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-terracotta bg-terracotta text-white font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="trail">
+                <i class="fa-solid fa-tree text-xs"></i>
+                <span class="text-[10px]">Greenway</span>
+              </button>
+              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="road">
+                <i class="fa-solid fa-road text-xs"></i>
+                <span class="text-[10px]">Quiet Roads</span>
+              </button>
+              <button class="surface-filter-btn px-2 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-center transition flex flex-col items-center gap-0.5 cursor-pointer" data-surface="lit">
+                <i class="fa-solid fa-lightbulb text-xs"></i>
+                <span class="text-[10px]">Well-Lit Only</span>
+              </button>
+            </div>
+
+            <!-- Route Safety Verification Metrics -->
+            <div class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 pt-1 px-0.5">
+              <span id="metricSidewalk" class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                <i class="fa-solid fa-check text-xs"></i> 98% Sidewalks
+              </span>
+              <span id="metricLit" class="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
+                <i class="fa-solid fa-bolt text-xs"></i> 100% Lit Streets
+              </span>
+              <span id="metricGain" class="flex items-center gap-1 text-sky-600 dark:text-sky-400 font-semibold text-[11px]">
+                <i class="fa-solid fa-mountain text-xs"></i> +42 ft Gain
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: Map Layers & Display -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
+          <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-layer-group text-terracotta"></i>
+            <span>Map Layers & Canvas Controls</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <button id="btnToggleSatellite" class="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/70 hover:border-terracotta text-stone-700 dark:text-stone-200 flex flex-col items-center justify-center gap-1 transition cursor-pointer" title="Toggle Satellite / Roadmap">
+              <i class="fa-solid fa-satellite text-sm text-sky-500"></i>
+              <span class="text-[11px] font-bold">Satellite</span>
+              <span id="settingsSatelliteStatus" class="text-[9px] font-mono text-stone-400">Roadmap</span>
+            </button>
+
+            <button id="btnToggleSafetyHeatmap" class="p-2.5 rounded-xl border border-terracotta/40 bg-terracotta/10 hover:border-terracotta text-stone-800 dark:text-stone-100 flex flex-col items-center justify-center gap-1 transition cursor-pointer" title="Toggle Safety Corridor Glow">
+              <i class="fa-solid fa-shield-halved text-sm text-terracotta"></i>
+              <span class="text-[11px] font-bold">Safety Glow</span>
+              <span id="settingsHeatmapStatus" class="text-[9px] font-mono text-emerald-500 font-bold">Active</span>
+            </button>
+
+            <button id="btnMaximizeMap" class="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/70 hover:border-terracotta text-stone-700 dark:text-stone-200 flex flex-col items-center justify-center gap-1 transition cursor-pointer" title="Minimize Bottom Drawer for Full Map">
+              <i class="fa-solid fa-expand text-sm text-amber-500"></i>
+              <span class="text-[11px] font-bold">Full Map</span>
+              <span id="settingsSheetStatus" class="text-[9px] font-mono text-stone-400">Expanded</span>
+            </button>
+          </div>
+
+          <!-- Map Gesture Tip (Moved off the map canvas to keep map clean) -->
+          <div id="mapTapHint" class="p-2.5 rounded-xl bg-stone-100 dark:bg-stone-900/80 border border-stone-200/80 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-300 flex items-center gap-2">
+            <i class="fa-solid fa-hand-pointer text-terracotta text-xs shrink-0"></i>
+            <span><strong>Pro Tip:</strong> Long-press anywhere on the map to drop a custom Start Line or Waypoint pin.</span>
+          </div>
+        </div>
+
+        <!-- SECTION 3: Appearance, Audio & Connected Services -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
+          <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-sliders text-terracotta"></i>
+            <span>Appearance, Audio & Integrations</span>
+          </div>
+
+          <!-- Persistent Theme Toggle Row -->
+          <div class="flex items-center justify-between py-1">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-900 text-terracotta flex items-center justify-center text-xs">
+                <i id="appThemeIcon" class="fa-solid fa-moon"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white">Interface Theme</div>
+                <p id="settingsThemeStatusLabel" class="text-[10px] text-stone-500 dark:text-stone-400">Persisted in LocalStorage</p>
+              </div>
+            </div>
+            <button id="btnAppThemeToggle" class="px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-800 dark:text-stone-200 transition cursor-pointer">
+              Switch Theme
+            </button>
+          </div>
+
+          <!-- Voice Guidance Toggle Row -->
+          <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-900 text-terracotta flex items-center justify-center text-xs">
+                <i id="audioIcon" class="fa-solid fa-volume-high"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white">Spoken Turn Guidance</div>
+                <p id="settingsVoiceStatusLabel" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Voice Active</p>
+              </div>
+            </div>
+            <button id="audioVoiceToggle" class="px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-xs font-bold text-stone-800 dark:text-stone-200 transition cursor-pointer">
+              Mute / Unmute
+            </button>
+          </div>
+
+          <!-- Measurement Units Toggle Row (F16) -->
+          <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-900 text-terracotta flex items-center justify-center text-xs">
+                <i class="fa-solid fa-ruler-combined"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white">Measurement Units</div>
+                <p id="settingsUnitsStatusLabel" class="text-[10px] text-stone-500 dark:text-stone-400">Imperial (mi, ft, °F)</p>
+              </div>
+            </div>
+            <div id="btnUnitSystemToggle" class="flex items-center gap-1 bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-700">
+              <button id="unitImperialBtn" type="button" data-unit-system="imperial" class="px-2.5 py-1 rounded-lg bg-terracotta text-white text-[11px] font-bold transition cursor-pointer">
+                Imperial (mi)
+              </button>
+              <button id="unitMetricBtn" type="button" data-unit-system="metric" class="px-2.5 py-1 rounded-lg text-stone-600 dark:text-stone-300 text-[11px] font-bold transition cursor-pointer">
+                Metric (km)
+              </button>
+            </div>
+          </div>
+
+          <!-- Spotify Running Audio Row -->
+          <div class="flex items-center justify-between py-1 border-t border-stone-100 dark:border-stone-700/70">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-[#1DB954]/15 text-[#1DB954] flex items-center justify-center text-sm">
+                <i class="fa-brands fa-spotify"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
+                  <span>Spotify Running Audio</span>
+                  <span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase">PRO</span>
+                </div>
+                <p class="text-[10px] text-stone-500 dark:text-stone-400">Playlists, BPM sync & audio ducking</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button id="btnTopBarSpotify" class="px-3 py-1.5 rounded-xl bg-[#1DB954] hover:bg-[#1ed760] text-stone-950 text-xs font-extrabold transition cursor-pointer">
+                Open Player
+              </button>
+              <button id="btnMapQuickSpotify" class="hidden" title="Spotify Quick Trigger"></button>
+            </div>
+          </div>
+
+          <!-- Safety Protocol & Health Status Footer Row -->
+          <div class="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-700/70">
+            <button id="btnSettingsSafetyDisclaimer" class="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-shield-halved text-terracotta"></i>
+              <span>Pedestrian Safety Protocol</span>
+            </button>
+            <button id="healthStatusIndicator" class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-heart-pulse text-[9px]"></i>
+              <span>Health Sync Active</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 4: Home Screen App & Route Export -->
+        <div class="p-3.5 rounded-2xl bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-700/80 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="text-[10px] font-black uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-mobile-screen-button text-terracotta"></i>
+              <span>Home Screen App & Offline Access</span>
+            </div>
+            <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-bold">
+              Offline Ready
+            </span>
+          </div>
+
+          <p class="text-[11px] text-stone-600 dark:text-stone-300 leading-snug">
+            Install <strong>Pace Plot</strong> to your device home screen for instant full-screen launch, offline route caching, and voice turn-by-turn navigation.
+          </p>
+
+          <div class="flex gap-2 pt-0.5">
+            <button id="btnSettingsInstallPwa" type="button" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <i class="fa-solid fa-download text-[11px]"></i>
+              <span id="settingsInstallPwaLabel">Install Pace Plot App</span>
+            </button>
+            <button id="btnSettingsExportGpx" type="button" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer" title="Download Active Route as GPX">
+              <i class="fa-solid fa-route text-terracotta"></i>
+              <span>Export GPX</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>

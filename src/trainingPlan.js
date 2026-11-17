@@ -1,6 +1,7 @@
 // ----------------------------------------------------
 // Pace Plot Custom 4-Week Athletic Training Plan Generator
 // ----------------------------------------------------
+import { auth, syncUserProfileState } from './firebase.js';
 
 const LOCAL_STORAGE_PLAN_KEY = 'paceplot_active_training_plan';
 
@@ -47,13 +48,14 @@ export function formatTime(totalSeconds) {
 }
 
 export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
-  const paces = calculatePaces(basePaceSeconds);
+  const safeBasePace = Number.isFinite(Number(basePaceSeconds)) && Number(basePaceSeconds) > 0 ? Number(basePaceSeconds) : 510;
+  const paces = calculatePaces(safeBasePace);
   const goal = EVENT_GOALS.find(g => g.id === goalId) || EVENT_GOALS[0];
 
   let weeks = [];
 
   if (goalId === '5k') {
-    const predictedFinishSeconds = 3.10686 * basePaceSeconds;
+    const predictedFinishSeconds = 3.10686 * safeBasePace;
     weeks = [
       {
         weekNum: 1,
@@ -61,8 +63,8 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
         focus: 'Establish aerobic volume & neuromuscular cadence',
         targetMiles: 12.5,
         days: [
-          { day: 'Mon', title: 'Easy Aerobic Run', dist: 3.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Relaxed greenway run with 4x20s light strides.', completed: true },
-          { day: 'Wed', title: '5K Interval Speed Session', dist: 3.5, type: 'interval', pace: paces.intervalPaceFormatted, zone: 'Zone 4', desc: '1 mi warmup, 4x400m at interval pace with 90s jog recovery, 1 mi cooldown.', completed: true },
+          { day: 'Mon', title: 'Easy Aerobic Run', dist: 3.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Relaxed greenway run with 4x20s light strides.', completed: false },
+          { day: 'Wed', title: '5K Interval Speed Session', dist: 3.5, type: 'interval', pace: paces.intervalPaceFormatted, zone: 'Zone 4', desc: '1 mi warmup, 4x400m at interval pace with 90s jog recovery, 1 mi cooldown.', completed: false },
           { day: 'Fri', title: 'Recovery Maintenance', dist: 2.5, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1-2', desc: 'Conversational pace on 100% lit sidewalk path.', completed: false },
           { day: 'Sun', title: 'Aerobic Long Run', dist: 4.5, type: 'long', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Steady endurance run through parks.', completed: false }
         ]
@@ -100,7 +102,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
           { day: 'Mon', title: 'Taper Shakeout Run', dist: 3.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Short, snappy jog with 4 fast pick-ups.', completed: false },
           { day: 'Wed', title: 'Neuromuscular Tune-Up', dist: 2.5, type: 'tempo', pace: paces.tempoPaceFormatted, zone: 'Zone 3', desc: '1 mi warmup, 3x300m at race pace, easy cooldown.', completed: false },
           { day: 'Fri', title: 'Pre-Race Activation', dist: 1.5, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1', desc: 'Easy 15-minute jog + dynamic drills.', completed: false },
-          { day: 'Sun', title: '5K Target Event / Time Trial', dist: 3.1, type: 'race', pace: formatPace(basePaceSeconds), zone: 'Zone 5', desc: 'Race day execution! Trust your training and attack the course.', completed: false }
+          { day: 'Sun', title: '5K Target Event / Time Trial', dist: 3.1, type: 'race', pace: formatPace(safeBasePace), zone: 'Zone 5', desc: 'Race day execution! Trust your training and attack the course.', completed: false }
         ]
       }
     ];
@@ -109,7 +111,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
       goalId,
       goalName: '5K Race Target',
       targetDistance: 3.1,
-      basePaceSeconds,
+      basePaceSeconds: safeBasePace,
       paces,
       predictedTime: formatTime(predictedFinishSeconds),
       totalMiles: 56.0,
@@ -118,7 +120,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
   }
 
   if (goalId === '10k') {
-    const predictedFinishSeconds = 6.21371 * (basePaceSeconds * 1.05);
+    const predictedFinishSeconds = 6.21371 * (safeBasePace * 1.05);
     weeks = [
       {
         weekNum: 1,
@@ -165,7 +167,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
           { day: 'Mon', title: 'Taper Easy Run', dist: 3.5, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Shortened distance with fast cadence.', completed: false },
           { day: 'Wed', title: 'Sharpening Repeats', dist: 3.5, type: 'tempo', pace: paces.tempoPaceFormatted, zone: 'Zone 3', desc: '1 mi warmup, 3x400m race pace, 1 mi cooldown.', completed: false },
           { day: 'Fri', title: 'Pre-Race Shakeout', dist: 2.0, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1', desc: '15 min activation with dynamic mobility.', completed: false },
-          { day: 'Sun', title: '10K Championship / Goal Race', dist: 6.2, type: 'race', pace: formatPace(basePaceSeconds * 1.05), zone: 'Zone 4-5', desc: 'Race day! Execute even splits and finish strong.', completed: false }
+          { day: 'Sun', title: '10K Championship / Goal Race', dist: 6.2, type: 'race', pace: formatPace(safeBasePace * 1.05), zone: 'Zone 4-5', desc: 'Race day! Execute even splits and finish strong.', completed: false }
         ]
       }
     ];
@@ -174,7 +176,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
       goalId,
       goalName: '10K Classic Plan',
       targetDistance: 6.2,
-      basePaceSeconds,
+      basePaceSeconds: safeBasePace,
       paces,
       predictedTime: formatTime(predictedFinishSeconds),
       totalMiles: 76.2,
@@ -183,7 +185,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
   }
 
   if (goalId === 'half') {
-    const predictedFinishSeconds = 13.1094 * (basePaceSeconds * 1.08);
+    const predictedFinishSeconds = 13.1094 * (safeBasePace * 1.08);
     weeks = [
       {
         weekNum: 1,
@@ -230,7 +232,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
           { day: 'Mon', title: 'Taper Easy Run', dist: 4.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Low volume, high form focus.', completed: false },
           { day: 'Wed', title: 'Pace Sharpening', dist: 3.5, type: 'tempo', pace: paces.tempoPaceFormatted, zone: 'Zone 3', desc: '1 mi warmup, 1.5 mi target race pace, 1 mi cooldown.', completed: false },
           { day: 'Fri', title: 'Pre-Race Shakeout', dist: 1.5, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1', desc: '15 minute easy jog + 3 strides.', completed: false },
-          { day: 'Sun', title: 'Half Marathon Race Day (13.1 mi)', dist: 13.1, type: 'race', pace: formatPace(basePaceSeconds * 1.08), zone: 'Zone 3-4', desc: 'Execute race pacing strategy and crush your half marathon goal!', completed: false }
+          { day: 'Sun', title: 'Half Marathon Race Day (13.1 mi)', dist: 13.1, type: 'race', pace: formatPace(safeBasePace * 1.08), zone: 'Zone 3-4', desc: 'Execute race pacing strategy and crush your half marathon goal!', completed: false }
         ]
       }
     ];
@@ -239,7 +241,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
       goalId,
       goalName: 'Half Marathon Stride',
       targetDistance: 13.1,
-      basePaceSeconds,
+      basePaceSeconds: safeBasePace,
       paces,
       predictedTime: formatTime(predictedFinishSeconds),
       totalMiles: 102.6,
@@ -247,8 +249,73 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
     };
   }
 
+  if (goalId === 'marathon') {
+    const predictedFinishSeconds = 26.2188 * (safeBasePace * 1.12);
+    weeks = [
+      {
+        weekNum: 1,
+        title: 'Week 1: Marathon Aerobic Volume & Rhythm',
+        focus: 'Establish high-mileage aerobic durability and fueling rhythm',
+        targetMiles: 32.0,
+        days: [
+          { day: 'Mon', title: 'Aerobic Foundation Run', dist: 6.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Steady aerobic cruise on paved greenway.', completed: false },
+          { day: 'Wed', title: 'Marathon Pace Tempo Block', dist: 7.0, type: 'tempo', pace: paces.marathonPaceFormatted, zone: 'Zone 3', desc: '1.5 mi warmup, 4.5 mi at marathon goal pace, 1 mi cooldown.', completed: false },
+          { day: 'Fri', title: 'Recovery Flush Run', dist: 5.0, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1', desc: 'Relaxed recovery jog on flat lit path.', completed: false },
+          { day: 'Sun', title: 'Endurance Long Run (14.0 mi)', dist: 14.0, type: 'long', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Practice marathon gel and hydration intake every 35 minutes.', completed: false }
+        ]
+      },
+      {
+        weekNum: 2,
+        title: 'Week 2: Glycogen Stamina & Threshold Extension',
+        focus: 'Extend marathon pace economy under cumulative fatigue',
+        targetMiles: 36.5,
+        days: [
+          { day: 'Mon', title: 'Steady Aerobic Stride', dist: 6.5, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Smooth cadence with 6x20s form strides.', completed: false },
+          { day: 'Wed', title: 'Lactate Threshold & MP Combo', dist: 8.5, type: 'tempo', pace: paces.tempoPaceFormatted, zone: 'Zone 3-4', desc: '1.5 mi warmup, 5.5 mi sustained threshold/marathon progression, 1.5 mi cooldown.', completed: false },
+          { day: 'Fri', title: 'Active Recovery Run', dist: 5.5, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1-2', desc: 'Easy restorative effort.', completed: false },
+          { day: 'Sun', title: 'Progressive Long Run (16.0 mi)', dist: 16.0, type: 'long', pace: paces.easyPaceFormatted, zone: 'Zone 2-3', desc: 'Final 3 miles at target marathon goal pace.', completed: false }
+        ]
+      },
+      {
+        weekNum: 3,
+        title: 'Week 3: Peak Marathon Block & 20-Mile Simulation',
+        focus: 'Maximum endurance stimulus before marathon taper',
+        targetMiles: 41.0,
+        days: [
+          { day: 'Mon', title: 'Midweek Aerobic Volume', dist: 7.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Continuous relaxed aerobic miles.', completed: false },
+          { day: 'Wed', title: 'Marathon Race Pace Dress Rehearsal', dist: 9.0, type: 'tempo', pace: paces.marathonPaceFormatted, zone: 'Zone 3', desc: '1.5 mi warmup, 6.0 mi locked at marathon pace, 1.5 mi cooldown.', completed: false },
+          { day: 'Fri', title: 'Pre-Long Run Shakeout', dist: 5.0, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1', desc: 'Keep legs fresh for Sunday peak distance.', completed: false },
+          { day: 'Sun', title: 'Peak 20-Mile Long Run', dist: 20.0, type: 'long', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Keystone 20-mile marathon simulation with full race nutrition.', completed: false }
+        ]
+      },
+      {
+        weekNum: 4,
+        title: 'Week 4: Supercompensation Taper & 26.2 Race Day',
+        focus: 'Glycogen superloading, neuromuscular freshness & marathon execution',
+        targetMiles: 35.2,
+        days: [
+          { day: 'Mon', title: 'Taper Easy Run', dist: 4.0, type: 'easy', pace: paces.easyPaceFormatted, zone: 'Zone 2', desc: 'Reduced volume to restore muscle fibers.', completed: false },
+          { day: 'Wed', title: 'Marathon Pace Tune-Up', dist: 3.0, type: 'tempo', pace: paces.marathonPaceFormatted, zone: 'Zone 3', desc: '1 mi warmup, 1 mi at marathon pace, 1 mi cooldown.', completed: false },
+          { day: 'Fri', title: 'Pre-Race Activation Shakeout', dist: 2.0, type: 'easy', pace: paces.recoveryPaceFormatted, zone: 'Zone 1', desc: 'Easy 15-minute shakeout + dynamic mobility.', completed: false },
+          { day: 'Sun', title: 'Marathon Race Day (26.2 mi)', dist: 26.2, type: 'race', pace: paces.marathonPaceFormatted, zone: 'Zone 3-4', desc: 'Race day! Run disciplined splits through mile 20 and bring it home strong.', completed: false }
+        ]
+      }
+    ];
+
+    return {
+      goalId,
+      goalName: 'Marathon Peak Block',
+      targetDistance: 26.2,
+      basePaceSeconds: safeBasePace,
+      paces,
+      predictedTime: formatTime(predictedFinishSeconds),
+      totalMiles: 144.7,
+      weeks
+    };
+  }
+
   // Base building fallback
-  const predictedFinishSeconds = 4.0 * basePaceSeconds;
+  const predictedFinishSeconds = 4.0 * safeBasePace;
   weeks = [
     {
       weekNum: 1,
@@ -304,7 +371,7 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
     goalId,
     goalName: 'Aerobic Base Builder',
     targetDistance: 4.0,
-    basePaceSeconds,
+    basePaceSeconds: safeBasePace,
     paces,
     predictedTime: formatTime(predictedFinishSeconds),
     totalMiles: 56.5,
@@ -312,9 +379,17 @@ export function generate4WeekPlan(goalId = '5k', basePaceSeconds = 510) {
   };
 }
 
-export function saveActivePlan(plan) {
+export function saveActivePlan(plan, storage = globalThis.localStorage) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_PLAN_KEY, JSON.stringify(plan));
+    if (storage && typeof storage.setItem === 'function') {
+      storage.setItem(LOCAL_STORAGE_PLAN_KEY, JSON.stringify(plan));
+    }
+  } catch (_) {}
+
+  try {
+    if (auth?.currentUser && plan) {
+      syncUserProfileState({ activeTrainingPlan: plan }).catch(() => {});
+    }
   } catch (_) {}
 }
 
@@ -323,6 +398,19 @@ export function loadActivePlan() {
     const raw = localStorage.getItem(LOCAL_STORAGE_PLAN_KEY);
     if (raw) return JSON.parse(raw);
   } catch (_) {}
+  return null;
+}
+
+export function hydrateTrainingPlanFromCloud(profileData, storage = globalThis.localStorage) {
+  const plan = profileData?.activeTrainingPlan;
+  if (plan && typeof plan === 'object' && Array.isArray(plan.weeks) && plan.weeks.length > 0) {
+    try {
+      if (storage && typeof storage.setItem === 'function') {
+        storage.setItem(LOCAL_STORAGE_PLAN_KEY, JSON.stringify(plan));
+      }
+    } catch (_) {}
+    return plan;
+  }
   return null;
 }
 

@@ -1,0 +1,434 @@
+      <!-- ========================================== -->
+      <!-- TAB 3: HEALTH & WATCH CONNECT -->
+      <!-- ========================================== -->
+      <section id="tabHealth" class="tab-content absolute inset-0 hidden overflow-y-auto p-4 space-y-4 bg-cream dark:bg-stone-900 z-10">
+        <div class="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
+          <div>
+            <h2 class="text-lg font-black text-stone-900 dark:text-white">Health & Smartwatches</h2>
+            <p class="text-xs text-stone-500">Android Health Connect & Bluetooth Sensors</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btnHealthSafetyDisclaimer" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/20 flex items-center gap-1 transition cursor-pointer" title="View Pedestrian Safety Agreement">
+              <i class="fa-solid fa-shield-halved text-[10px]"></i> Safety Protocol
+            </button>
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+              <i class="fa-solid fa-link text-[10px]"></i> Active
+            </span>
+          </div>
+        </div>
+
+        <!-- Health Connect Hub Card -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-sm font-bold text-stone-900 dark:text-white">Android Health Connect</h3>
+              <p class="text-xs text-stone-500 dark:text-stone-400">Zero cloud fees. On-device biometric hub.</p>
+            </div>
+            <button id="btnToggleHealthConnect" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition">
+              Connected
+            </button>
+          </div>
+
+          <!-- Connected ecosystem badges -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 dark:border-stone-700 text-xs">
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-brands fa-google text-rose-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Google Fit</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-solid fa-mobile text-sky-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Samsung Health</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-brands fa-strava text-orange-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Strava Direct</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
+              <i class="fa-solid fa-clock text-blue-500"></i>
+              <span class="font-medium text-stone-700 dark:text-stone-300">Garmin Connect</span>
+              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Metrics & Web Bluetooth Heart Rate Sensor Pairing -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics & BLE Heart Rate</h3>
+              <p id="bleHrDeviceStatusText" class="text-[10px] text-stone-400 mt-0.5">Pair Garmin, Polar, Wahoo, COROS, or Wear OS BLE HR sensor</p>
+            </div>
+            <span id="liveBiometricZoneBadge" class="px-2 py-0.5 rounded-md text-[10px] font-mono tabular-nums font-bold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/25">
+              Z3 Tempo · 79% HRmax
+            </span>
+          </div>
+          
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
+              <p class="text-[10px] text-stone-500">Live Heart Rate</p>
+              <p id="healthHeartRate" class="text-base font-extrabold font-mono tabular-nums text-rose-500 mt-0.5">148 <span class="text-[10px] font-sans font-normal text-stone-400">bpm</span></p>
+            </div>
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
+              <p class="text-[10px] text-stone-500">Cadence</p>
+              <p id="healthCadence" class="text-base font-extrabold font-mono tabular-nums text-terracotta mt-0.5">168 <span class="text-[10px] font-sans font-normal text-stone-400">spm</span></p>
+            </div>
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40">
+              <p class="text-[10px] text-stone-500">Calories</p>
+              <p id="healthCalories" class="text-base font-extrabold font-mono tabular-nums text-amber-500 mt-0.5">324 <span class="text-[10px] font-sans font-normal text-stone-400">kcal</span></p>
+            </div>
+          </div>
+
+          <button id="btnConnectBluetoothHr" type="button" class="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer">
+            <i class="fa-brands fa-bluetooth-b text-sm"></i>
+            <span id="btnConnectBluetoothHrLabel">Pair Bluetooth Heart Rate Monitor (BLE)</span>
+          </button>
+        </div>
+
+        <!-- GPX Export & Share Action Card -->
+        <div class="bg-gradient-to-br from-terracotta/10 to-amber-500/10 dark:from-terracotta/20 dark:to-stone-800 p-4 rounded-2xl border border-terracotta/20 space-y-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-file-export text-terracotta"></i>
+            <h3 class="text-sm font-bold text-stone-900 dark:text-white">Export & Watch Sync</h3>
+          </div>
+          <p class="text-xs text-stone-600 dark:text-stone-300">
+            Export this safe route directly as a standard GPX file compatible with Apple Watch Workouts, Garmin Connect, COROS, or Suunto.
+          </p>
+          <div class="flex gap-2 pt-1">
+            <button id="btnExportGpx" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+              <i class="fa-solid fa-download"></i>
+              <span>Download .GPX Track</span>
+            </button>
+            <button id="btnShareRoute" class="py-2 px-3 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-50 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-200 dark:border-stone-600 transition" title="Share Link">
+              <i class="fa-solid fa-share-nodes"></i>
+            </button>
+          </div>
+          <div id="exportStatusToast" class="hidden text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold text-center mt-1">
+            <i class="fa-solid fa-check"></i> GPX generated and downloaded!
+          </div>
+        </div>
+
+        <!-- Weekly Athletic Volume & Personalized Heart Rate Zones (Based on Historical Max HR) -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Weekly Training Volume</h3>
+              <p id="weeklyVolumeSummaryText" class="text-sm font-extrabold text-stone-900 dark:text-white mt-0.5">25.9 miles · 6 Runs</p>
+            </div>
+            <div class="text-right">
+              <span id="weeklyActiveTimeText" class="text-sm font-extrabold font-mono tabular-nums text-terracotta">3h 42m</span>
+              <p class="text-[10px] text-stone-400">Total Active Time</p>
+            </div>
+          </div>
+
+          <!-- Weekly 7-Day Bar Chart SVG -->
+          <div class="pt-1">
+            <div class="flex items-end justify-between gap-2 h-20 px-2 border-b border-stone-100 dark:border-stone-700 pb-1">
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/40 rounded-t-md" style="height: 38px;" title="Mon: 3.1 mi · Peak 142 bpm"></div>
+                <span class="text-[9px] font-semibold text-stone-400">M</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/60 rounded-t-md" style="height: 54px;" title="Tue: 4.5 mi · Peak 145 bpm"></div>
+                <span class="text-[9px] font-semibold text-stone-400">T</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-stone-200 dark:bg-stone-700 rounded-t-md" style="height: 6px;" title="Wed: Rest Day"></div>
+                <span class="text-[9px] font-semibold text-stone-400">W</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/75 rounded-t-md" style="height: 62px;" title="Thu: 5.0 mi · Peak 171 bpm"></div>
+                <span class="text-[9px] font-semibold text-stone-400">T</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/40 rounded-t-md" style="height: 38px;" title="Fri: 3.1 mi · Peak 123 bpm"></div>
+                <span class="text-[9px] font-semibold text-stone-400">F</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta rounded-t-md" style="height: 76px;" title="Sat: 6.2 mi (10K) · Peak 188 bpm"></div>
+                <span class="text-[9px] font-bold text-terracotta">S</span>
+              </div>
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-full max-w-[22px] bg-terracotta/55 rounded-t-md" style="height: 48px;" title="Sun: 4.0 mi · Peak 144 bpm"></div>
+                <span class="text-[9px] font-semibold text-stone-400">S</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Personalized Heart Rate Zones Based on Historical Max HR -->
+          <div class="pt-1 space-y-3">
+            <!-- Historical Max HR Telemetry Summary Box -->
+            <div class="p-3 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200/80 dark:border-stone-700/80 space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-heart-pulse text-rose-500 text-xs"></i>
+                    <span class="text-[11px] font-extrabold uppercase tracking-wider text-stone-800 dark:text-stone-100">Historical Max HR Zones</span>
+                  </div>
+                  <p id="hrMaxSourceLabel" class="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                    Peak from 6 Historical Runs · 10K Threshold Benchmark
+                  </p>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="flex items-baseline justify-end gap-1">
+                    <span id="hrMaxBpmValue" class="text-base font-black font-mono tabular-nums text-rose-500">188</span>
+                    <span class="text-[10px] font-bold text-stone-400 uppercase">bpm max</span>
+                  </div>
+                  <p class="text-[10px] text-stone-400 font-mono tabular-nums">
+                    Hist Avg: <strong id="hrHistoricalAvgValue" class="text-stone-700 dark:text-stone-200">135 bpm</strong>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Max HR Fine-Tuning / Calibration Bar -->
+              <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-stone-200/70 dark:border-stone-800 text-[10px]">
+                <span class="text-stone-500 dark:text-stone-400 font-medium">Calibrate Max HR Ceiling:</span>
+                <div class="flex items-center gap-1">
+                  <button id="btnMaxHrMinus" type="button" class="px-2 py-1 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-mono font-bold transition cursor-pointer" title="Decrease Max HR by 2 bpm">
+                    -2
+                  </button>
+                  <button id="btnMaxHrPlus" type="button" class="px-2 py-1 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-mono font-bold transition cursor-pointer" title="Increase Max HR by 2 bpm">
+                    +2
+                  </button>
+                  <button id="btnMaxHrResetAuto" type="button" class="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-600 dark:text-rose-300 font-bold transition cursor-pointer" title="Reset to Historical Peak Max HR">
+                    Auto Peak
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- D3.js Bar Chart: Weekly Workout Time Distribution Across Personalized HR Zones -->
+            <div id="d3HrZonesChartSection" class="p-3 rounded-xl bg-stone-50/90 dark:bg-stone-900/75 border border-stone-200/80 dark:border-stone-700/80 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-column text-terracotta text-xs"></i>
+                    <h4 class="text-[11px] font-extrabold uppercase tracking-wider text-stone-800 dark:text-stone-100">
+                      Weekly Time in Heart Rate Zones
+                    </h4>
+                  </div>
+                  <p class="text-[10px] text-stone-500 dark:text-stone-400">
+                    Minutes per personalized HR zone · Tap any bar for audio briefing
+                  </p>
+                </div>
+                <span id="d3ChartTotalTimeBadge" class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/25 text-[10px] font-mono tabular-nums font-bold shrink-0">
+                  222m total
+                </span>
+              </div>
+
+              <div id="d3HrZonesChartContainer" data-testid="d3-hr-zones-chart" class="w-full pt-1 select-none"></div>
+            </div>
+
+            <!-- Stacked 5-Zone Distribution Bar -->
+            <div class="space-y-1.5 text-[11px]">
+              <div class="flex justify-between items-center font-semibold">
+                <span id="hrZone2TargetLabel" class="text-stone-600 dark:text-stone-300">Zone 2 Aerobic Base (113–131 bpm)</span>
+                <span id="hrZone2TargetStats" class="font-mono tabular-nums text-emerald-500 font-bold">50% · 1h 51m</span>
+              </div>
+              <div id="hrZonesStackedBar" class="w-full h-2.5 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden flex gap-[1px]">
+                <div class="bg-sky-400 h-full transition-all duration-300" style="width: 17%;" title="Zone 1 Warmup & Recovery"></div>
+                <div class="bg-emerald-500 h-full transition-all duration-300" style="width: 50%;" title="Zone 2 Aerobic Base"></div>
+                <div class="bg-amber-500 h-full transition-all duration-300" style="width: 20%;" title="Zone 3 Aerobic Tempo"></div>
+                <div class="bg-orange-500 h-full transition-all duration-300" style="width: 10%;" title="Zone 4 Lactate Threshold"></div>
+                <div class="bg-rose-500 h-full transition-all duration-300" style="width: 3%;" title="Zone 5 VO2 Max Peak"></div>
+              </div>
+              <div id="hrZonesLegendRow" class="flex justify-between text-[9px] font-mono tabular-nums text-stone-400">
+                <span>Z1 (17%)</span>
+                <span class="text-emerald-500 font-bold">Z2 (50%)</span>
+                <span>Z3 (20%)</span>
+                <span>Z4 (10%)</span>
+                <span>Z5 (3%)</span>
+              </div>
+            </div>
+
+            <!-- Specific 5-Zone Personalized BPM & Time Breakdown List -->
+            <div id="hrZonesBreakdownList" class="space-y-1.5 pt-0.5">
+              <!-- Populated dynamically by renderHeartRateZonesUI() -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Runner Achievements & Badges System -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500/20 to-terracotta/20 text-terracotta flex items-center justify-center text-sm shadow-sm">
+                <i class="fa-solid fa-trophy"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">Achievements & Badges</h3>
+                <p class="text-[10px] text-stone-500 dark:text-stone-400">Milestones unlocked through verified safe runs</p>
+              </div>
+            </div>
+            <span id="badgesUnlockedBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              4 / 10 Unlocked
+            </span>
+          </div>
+
+          <!-- Overall Milestone Progress Bar -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-[10px] text-stone-500 dark:text-stone-400 font-semibold">
+              <span>Runner Milestone Progress</span>
+              <span id="badgesProgressPct" class="font-mono text-terracotta font-bold">40%</span>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden">
+              <div id="badgesProgressBar" class="h-full bg-gradient-to-r from-amber-500 to-terracotta rounded-full transition-all duration-500" style="width: 40%;"></div>
+            </div>
+          </div>
+
+          <!-- Badges Grid (10 athletic achievements) -->
+          <div id="badgesGrid" class="grid grid-cols-2 gap-2 pt-1">
+            <!-- Dynamically populated or rendered -->
+          </div>
+        </div>
+
+        <!-- Recorded Workouts History (Firestore Sync) -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Cloud Run History</h3>
+              <span id="workoutSyncBadge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">Local Only</span>
+            </div>
+            <button id="btnDemoRecordRun" class="text-[11px] font-bold text-terracotta hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-plus text-[10px]"></i> Log Run
+            </button>
+          </div>
+
+          <div id="workoutsHistoryList" class="space-y-2">
+            <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/40 border border-stone-100 dark:border-stone-700 flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-stone-900 dark:text-white">West Creek 5K Pace Stride</h4>
+                <p class="text-[10px] text-stone-500">3.10 mi • 26:12 • 8'27"/mi • 342 kcal</p>
+              </div>
+              <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Completed</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CUSTOM 4-WEEK ATHLETIC TRAINING PLAN GENERATOR -->
+        <!-- ========================================== -->
+        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-terracotta/10 text-terracotta flex items-center justify-center text-sm shadow-sm">
+                <i class="fa-solid fa-person-running"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">Training Plan Generator</h3>
+                <p class="text-[10px] text-stone-500 dark:text-stone-400">Custom 4-week block calibrated to your historical pace</p>
+              </div>
+            </div>
+            <span id="trainingGoalBadge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-terracotta/15 text-terracotta">
+              5K Target
+            </span>
+          </div>
+
+          <!-- Goal Distance Selector Buttons -->
+          <div>
+            <label class="block text-[11px] font-semibold text-stone-600 dark:text-stone-300 mb-1.5">Select Target Distance or Goal:</label>
+            <div class="grid grid-cols-5 gap-1.5 text-xs font-bold text-center">
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-terracotta text-white shadow-sm transition cursor-pointer active" data-goal="5k">
+                5K (3.1m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="10k">
+                10K (6.2m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="half">
+                Half (13.1m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="marathon">
+                Full (26.2m)
+              </button>
+              <button class="btn-plan-goal py-2 px-1 rounded-xl bg-stone-100 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition cursor-pointer" data-goal="base">
+                Base Build
+              </button>
+            </div>
+          </div>
+
+          <!-- Historical Pace Intelligence & Projected Race Finish Banner -->
+          <div class="p-3 rounded-2xl bg-gradient-to-br from-stone-50 to-amber-500/5 dark:from-stone-900/60 dark:to-stone-800 border border-stone-200/80 dark:border-stone-700/80 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-gauge-high text-terracotta text-xs"></i>
+                <span class="font-bold text-stone-900 dark:text-white">Detected Base Pace:</span>
+                <span id="planBasePaceDisplay" class="font-mono font-black text-terracotta">8'27"/mi</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-stone-500">Predicted Finish:</span>
+                <span id="planPredictedFinish" class="font-mono font-extrabold text-stone-900 dark:text-white ml-1">26m 14s</span>
+              </div>
+            </div>
+
+            <!-- Calculated Periodization Training Zones -->
+            <div class="grid grid-cols-3 gap-1.5 pt-1 text-center text-[10px]">
+              <div class="p-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                <p class="text-stone-400 font-medium">Easy / Zone 2</p>
+                <p id="zoneEasyPace" class="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">9'22"/mi</p>
+              </div>
+              <div class="p-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                <p class="text-stone-400 font-medium">Tempo / Zone 3</p>
+                <p id="zoneTempoPace" class="font-mono font-bold text-amber-500 mt-0.5">8'42"/mi</p>
+              </div>
+              <div class="p-1.5 rounded-xl bg-white dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60">
+                <p class="text-stone-400 font-medium">Speed / Zone 4</p>
+                <p id="zoneIntervalPace" class="font-mono font-bold text-rose-500 mt-0.5">8'02"/mi</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4-Week Block Selector (Tabs) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] font-bold text-stone-700 dark:text-stone-300">4-Week Training Schedule</span>
+              <span id="weekVolumeBadge" class="text-[10px] font-mono font-bold text-stone-500">Week 1: 12.5 mi</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 p-1 bg-stone-100 dark:bg-stone-900/80 rounded-xl text-xs font-bold text-center">
+              <button class="btn-plan-week py-1.5 rounded-lg bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm transition active" data-week="0">
+                Week 1
+              </button>
+              <button class="btn-plan-week py-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 transition" data-week="1">
+                Week 2
+              </button>
+              <button class="btn-plan-week py-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 transition" data-week="2">
+                Week 3
+              </button>
+              <button class="btn-plan-week py-1.5 rounded-lg text-stone-600 dark:text-stone-400 hover:text-stone-900 transition" data-week="3">
+                Week 4
+              </button>
+            </div>
+          </div>
+
+          <!-- Week Focus Headline -->
+          <div class="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-700/30 border border-stone-100 dark:border-stone-700 flex items-center justify-between text-xs">
+            <div>
+              <h4 id="planWeekHeadline" class="font-bold text-stone-900 dark:text-white">Week 1: Aerobic Base & Rhythm</h4>
+              <p id="planWeekFocus" class="text-[10px] text-stone-500">Establish aerobic volume & neuromuscular cadence</p>
+            </div>
+            <span id="planWeekCompletionStatus" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">0 / 4 Done</span>
+          </div>
+
+          <!-- Day-by-Day Workouts List (Interactive with 'Map Route' 1-click execution) -->
+          <div id="planWorkoutsList" class="space-y-2">
+            <!-- Populated dynamically by trainingPlan.js -->
+          </div>
+
+          <!-- Plan Action Utilities -->
+          <div class="flex items-center gap-2 pt-1 border-t border-stone-100 dark:border-stone-700">
+            <button id="btnRegeneratePlan" class="flex-1 py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-700/80 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-arrows-rotate text-[11px] text-terracotta"></i>
+              <span>Recalibrate from Workouts</span>
+            </button>
+            <button id="btnExportTrainingPlan" class="py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition" title="Export Plan to Calendar or GPX">
+              <i class="fa-solid fa-calendar-plus text-[11px]"></i>
+              <span>Export Block</span>
+            </button>
+          </div>
+        </div>
+      </section>
+

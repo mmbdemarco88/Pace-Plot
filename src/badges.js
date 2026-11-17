@@ -155,6 +155,7 @@ export function unlockBadge(badgeId, onUnlockCallback = null) {
 }
 
 export function showBadgeToast(badge) {
+  if (typeof document === 'undefined') return;
   const toast = document.getElementById('badgeUnlockToast');
   const icon = document.getElementById('toastBadgeIcon');
   const title = document.getElementById('toastBadgeTitle');
@@ -177,23 +178,35 @@ export function evaluateBadgesFromWorkouts(workouts = [], context = {}, onUnlock
   const currentUnlocked = getUnlockedBadges();
   const newlyUnlocked = [];
 
-  // Calculate totals
+  // Calculate totals and time-of-day milestones from workout timestamps
   let totalMiles = 0;
   let totalGain = 0;
-  const currentHour = new Date().getHours();
+  let hasEarlyBirdWorkout = false;
+  let hasNightOwlWorkout = false;
 
   workouts.forEach(w => {
     totalMiles += Number(w.distance || 0);
     totalGain += Number(w.elevationGain || 35);
+
+    const workoutDate = w && w.completedAt ? new Date(w.completedAt) : null;
+    if (workoutDate && !Number.isNaN(workoutDate.getTime())) {
+      const hour = workoutDate.getHours();
+      if (hour < 7) {
+        hasEarlyBirdWorkout = true;
+      }
+      if (hour >= 20) {
+        hasNightOwlWorkout = true;
+      }
+    }
   });
 
   // 1. Early bird (before 7 AM)
-  if (currentHour < 7 && !currentUnlocked.includes('early_bird')) {
+  if (hasEarlyBirdWorkout && !currentUnlocked.includes('early_bird')) {
     newlyUnlocked.push('early_bird');
   }
 
   // 2. Night owl (after 8 PM = 20:00)
-  if (currentHour >= 20 && !currentUnlocked.includes('night_owl')) {
+  if (hasNightOwlWorkout && !currentUnlocked.includes('night_owl')) {
     newlyUnlocked.push('night_owl');
   }
 
@@ -241,6 +254,7 @@ export function evaluateBadgesFromWorkouts(workouts = [], context = {}, onUnlock
 }
 
 export function renderBadgesGrid(onBadgeClick = null) {
+  if (typeof document === 'undefined') return;
   const grid = document.getElementById('badgesGrid');
   const countBadge = document.getElementById('badgesUnlockedBadge');
   const progressPct = document.getElementById('badgesProgressPct');

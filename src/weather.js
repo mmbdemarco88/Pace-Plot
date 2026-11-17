@@ -11,7 +11,7 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes cache
  * @returns {Promise<{tempF: number, rainProb: number, condition: string, icon: string, iconColor: string, summary: string, windMph: number, provider: string}>}
  */
 export async function fetchRouteWeather(lat, lon) {
-  if (typeof lat !== 'number' || typeof lon !== 'number') {
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lon)) {
     return getDefaultWeather();
   }
 
@@ -21,7 +21,7 @@ export async function fetchRouteWeather(lat, lon) {
     return cached.data;
   }
 
-  const openWeatherApiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || '';
+  const openWeatherApiKey = import.meta.env?.VITE_OPENWEATHER_API_KEY || '';
 
   // 1. If OpenWeather API key is provided, try OpenWeather API first
   if (openWeatherApiKey) {

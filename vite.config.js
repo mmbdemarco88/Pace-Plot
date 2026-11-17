@@ -2,6 +2,33 @@ import { defineConfig, loadEnv } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
 
+export function resolveHtmlIncludes(html, rootDir = process.cwd(), seen = new Set()) {
+  return html.replace(/<!--\s*@include\s+([^\s]+)\s*-->/g, (match, relPath) => {
+    const absPath = path.resolve(rootDir, relPath);
+    if (seen.has(absPath) || !fs.existsSync(absPath)) {
+      return '';
+    }
+    const nextSeen = new Set(seen);
+    nextSeen.add(absPath);
+    const partial = fs.readFileSync(absPath, 'utf-8');
+    return resolveHtmlIncludes(partial, rootDir, nextSeen);
+  });
+}
+
+function htmlPartialsPlugin() {
+  return {
+    name: 'html-partials',
+    transformIndexHtml(html) {
+      return resolveHtmlIncludes(html, process.cwd());
+    },
+    handleHotUpdate({ file, server }) {
+      if (file.includes(`${path.sep}src${path.sep}templates${path.sep}`) && file.endsWith('.html')) {
+        server.ws.send({ type: 'full-reload' });
+      }
+    }
+  };
+}
+
 function spotifyOAuthMiddlewarePlugin() {
   let envVars = {};
 
@@ -260,6 +287,42 @@ function spotifyOAuthMiddlewarePlugin() {
       if (fs.existsSync(srcManifest) && fs.existsSync(distDir)) {
         fs.copyFileSync(srcManifest, path.resolve(distDir, 'manifest.webmanifest'));
       }
+      // Inject compiled dist/assets/* into dist/sw.js PRECACHE_ASSETS for 100% offline capability (F2)
+      const distAssetsDir = path.resolve(distDir, 'assets');
+      const distSwPath = path.resolve(distDir, 'sw.js');
+      if (fs.existsSync(distAssetsDir) && fs.existsSync(distSwPath)) {
+        try {
+          const collectFiles = (dir, base = '') => {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            const out = [];
+            for (const entry of entries) {
+              const rel = base ? `${base}/${entry.name}` : entry.name;
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                if (entry.name !== 'aistudio') {
+                  out.push(...collectFiles(full, rel));
+                }
+              } else {
+                out.push(`/assets/${rel}`);
+              }
+            }
+            return out;
+          };
+          const assetUrls = collectFiles(distAssetsDir);
+          if (assetUrls.length > 0) {
+            let swContent = fs.readFileSync(distSwPath, 'utf-8');
+            swContent = swContent.replace(
+              /(const PRECACHE_ASSETS = \[)([\s\S]*?)(\];)/,
+              (full, open, inner, close) => {
+                const injected = assetUrls.map((u) => `  '${u}'`).join(',\n');
+                const trimmedInner = inner.replace(/\s+$/, '');
+                return `${open}${trimmedInner},\n${injected}\n${close}`;
+              }
+            );
+            fs.writeFileSync(distSwPath, swContent, 'utf-8');
+          }
+        } catch (_) {}
+      }
       // Mirror compiled production bundle into www/ for Capacitor Android App Bundle (.aab) builds
       if (fs.existsSync(distDir)) {
         try {
@@ -270,6 +333,13 @@ function spotifyOAuthMiddlewarePlugin() {
           fs.rmSync(path.resolve(wwwDir, 'screenshot-narrow.png'), { force: true });
           fs.rmSync(path.resolve(wwwDir, 'screenshot-wide.png'), { force: true });
           fs.rmSync(path.resolve(wwwDir, 'screenshot-health.png'), { force: true });
+          const wwwSwPath = path.resolve(wwwDir, 'sw.js');
+          if (fs.existsSync(wwwSwPath)) {
+            const cleanedSw = fs
+              .readFileSync(wwwSwPath, 'utf-8')
+              .replace(/^\s*['"]\/screenshot-(?:narrow|wide|health)\.png['"],?\r?\n/gm, '');
+            fs.writeFileSync(wwwSwPath, cleanedSw, 'utf-8');
+          }
         } catch (_) {}
       }
     }
@@ -278,6 +348,7 @@ function spotifyOAuthMiddlewarePlugin() {
 
 export default defineConfig({
   plugins: [
+    htmlPartialsPlugin(),
     spotifyOAuthMiddlewarePlugin()
   ],
   build: {

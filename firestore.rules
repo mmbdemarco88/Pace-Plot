@@ -27,7 +27,7 @@ service cloud.firestore {
 
     // Schema Validators
     function isValidUserProfile(data) {
-      let allowedKeys = ['displayName', 'email', 'photoURL', 'subscriptionStatus', 'tier', 'trialStartedAt', 'trialExpiresAt', 'createdAt'];
+      let allowedKeys = ['displayName', 'email', 'photoURL', 'subscriptionStatus', 'tier', 'trialStartedAt', 'trialExpiresAt', 'activeTrainingPlan', 'createdAt', 'updatedAt'];
       return data.keys().hasAll(['email'])
         && data.keys().hasOnly(allowedKeys)
         && data.email is string && data.email.size() <= 150
@@ -36,8 +36,10 @@ service cloud.firestore {
         && isValidOptionalString(data, 'subscriptionStatus', 30)
         && isValidOptionalString(data, 'tier', 20)
         && isValidOptionalString(data, 'createdAt', 64)
-        && (!('trialStartedAt' in data) || data.trialStartedAt is number)
-        && (!('trialExpiresAt' in data) || data.trialExpiresAt is number);
+        && isValidOptionalString(data, 'updatedAt', 64)
+        && (!('trialStartedAt' in data) || data.trialStartedAt == null || data.trialStartedAt is number)
+        && (!('trialExpiresAt' in data) || data.trialExpiresAt == null || data.trialExpiresAt is number)
+        && (!('activeTrainingPlan' in data) || data.activeTrainingPlan == null || data.activeTrainingPlan is map);
     }
 
     function isValidSavedRoute(data) {
@@ -107,6 +109,32 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(activityId) && isSignedIn() && isValidRunActivity(request.resource.data);
       allow update: if isValidId(activityId) && isSignedIn() && resource.data.userId == request.auth.uid && isValidRunActivity(request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function isValidBeaconSession(data) {
+      let allowedKeys = ['userId', 'lat', 'lng', 'batteryPct', 'etaText', 'pace', 'distanceMiles', 'routeTitle', 'active', 'sosActive', 'runnerName', 'updatedAt'];
+      return data.keys().hasAll(['userId', 'lat', 'lng'])
+        && data.keys().hasOnly(allowedKeys)
+        && data.userId == request.auth.uid
+        && data.lat is number && data.lat >= -90 && data.lat <= 90
+        && data.lng is number && data.lng >= -180 && data.lng <= 180
+        && (!('batteryPct' in data) || data.batteryPct == null || (data.batteryPct is number && data.batteryPct >= 0 && data.batteryPct <= 100))
+        && isValidOptionalString(data, 'etaText', 64)
+        && isValidOptionalString(data, 'pace', 32)
+        && (!('distanceMiles' in data) || (data.distanceMiles is number && data.distanceMiles >= 0 && data.distanceMiles <= 500))
+        && (!data.keys().hasAny(['routeTitle']) || (data.routeTitle is string && data.routeTitle.size() <= 200))
+        && (!('active' in data) || data.active is bool)
+        && (!('sosActive' in data) || data.sosActive is bool)
+        && isValidOptionalString(data, 'runnerName', 100)
+        && isValidOptionalString(data, 'updatedAt', 64);
+    }
+
+    // Live SafeGuard Beacon Sessions: public read by sessionId, owner-authenticated write
+    match /beacons/{sessionId} {
+      allow read: if isValidId(sessionId);
+      allow create: if isValidId(sessionId) && isSignedIn() && isValidBeaconSession(request.resource.data);
+      allow update: if isValidId(sessionId) && isSignedIn() && resource.data.userId == request.auth.uid && isValidBeaconSession(request.resource.data);
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
