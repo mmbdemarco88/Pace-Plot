@@ -316,6 +316,12 @@ export function syncSpotifyHudAndPillUI(state) {
   };
   const playlist = state.playlists?.[state.activePlaylistIndex] || { name: '170 BPM Tempo Stride' };
 
+  const mapSpotifyPill = document.getElementById('mapSpotifyFloatingPill');
+  if (mapSpotifyPill) mapSpotifyPill.classList.toggle('hidden', !hasProAccess);
+
+  const hudSpotifyMiniPlayer = document.getElementById('hudSpotifyMiniPlayer');
+  if (hudSpotifyMiniPlayer) hudSpotifyMiniPlayer.classList.toggle('hidden', !hasProAccess);
+
   const hudPaywallOverlay = document.getElementById('hudSpotifyPaywallOverlay');
   if (hudPaywallOverlay) hudPaywallOverlay.classList.toggle('hidden', hasProAccess);
 

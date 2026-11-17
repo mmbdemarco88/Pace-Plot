@@ -53,7 +53,7 @@
   </header>
 
   <!-- Main App Container -->
-  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-900 rounded-none sm:rounded-[36px] shadow-2xl border-0 sm:border-[8px] border-stone-300 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
+  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-950 rounded-none sm:rounded-[40px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border-0 sm:border-[6px] border-stone-200/90 dark:border-stone-800 flex flex-col overflow-hidden relative transition-all duration-300">
     
     <!-- Map Quota Banner -->
     <div id="gmpQuotaBanner" class="hidden bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2 text-[11px] text-center sticky top-0 z-50 shadow-sm">
@@ -61,9 +61,9 @@
     </div>
 
     <!-- App Top Bar (Condensed & Uncluttered) -->
-    <nav class="w-full px-4 py-2 bg-cream dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between z-30">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-terracotta flex items-center justify-center text-white shadow-sm">
+    <nav class="w-full px-4 py-2.5 bg-cream/95 dark:bg-stone-950/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 flex items-center justify-between z-30">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-terracotta to-orange-600 flex items-center justify-center text-white shadow-md shadow-terracotta/25">
           <i class="fa-solid fa-route text-sm"></i>
         </div>
         <div>
@@ -73,7 +73,7 @@
       </div>
 
       <div class="flex items-center gap-1.5">
-        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-sm hover:opacity-95 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer" title="Upgrade to Pace Plot PRO">
+        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-md shadow-amber-500/20 ring-1 ring-white/20 hover:opacity-95 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer" title="Upgrade to Pace Plot PRO">
           <i class="fa-solid fa-crown text-[9px]"></i>
           <span id="headerPremiumLabel">PRO</span>
         </button>

@@ -38,8 +38,8 @@
       }
     })();
   </script>
-  <script type="module" crossorigin src="/assets/index-Bn5QlaQE.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-TVvvnoZy.css">
+  <script type="module" crossorigin src="/assets/index-1JGVQYCw.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DzQmd9g1.css">
 </head>
 <body class="bg-stone-200 dark:bg-stone-950 sm:bg-stone-200/90 sm:dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-sans min-h-screen flex flex-col items-center justify-center p-0 sm:p-4 transition-colors duration-200">
 
@@ -98,7 +98,7 @@
   </header>
 
   <!-- Main App Container -->
-  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-900 rounded-none sm:rounded-[36px] shadow-2xl border-0 sm:border-[8px] border-stone-300 dark:border-stone-700 flex flex-col overflow-hidden relative transition-all duration-300">
+  <main id="appContainer" class="w-full sm:max-w-[420px] h-screen sm:h-[840px] max-h-screen sm:max-h-[92vh] bg-cream dark:bg-stone-950 rounded-none sm:rounded-[40px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border-0 sm:border-[6px] border-stone-200/90 dark:border-stone-800 flex flex-col overflow-hidden relative transition-all duration-300">
     
     <!-- Map Quota Banner -->
     <div id="gmpQuotaBanner" class="hidden bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 px-4 py-2 text-[11px] text-center sticky top-0 z-50 shadow-sm">
@@ -106,9 +106,9 @@
     </div>
 
     <!-- App Top Bar (Condensed & Uncluttered) -->
-    <nav class="w-full px-4 py-2 bg-cream dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between z-30">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-terracotta flex items-center justify-center text-white shadow-sm">
+    <nav class="w-full px-4 py-2.5 bg-cream/95 dark:bg-stone-950/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800/80 flex items-center justify-between z-30">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-terracotta to-orange-600 flex items-center justify-center text-white shadow-md shadow-terracotta/25">
           <i class="fa-solid fa-route text-sm"></i>
         </div>
         <div>
@@ -118,7 +118,7 @@
       </div>
 
       <div class="flex items-center gap-1.5">
-        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-sm hover:opacity-95 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer" title="Upgrade to Pace Plot PRO">
+        <button id="btnOpenUpgradeModal" class="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-terracotta text-white font-extrabold text-[10px] flex items-center gap-1 shadow-md shadow-amber-500/20 ring-1 ring-white/20 hover:opacity-95 transition active:scale-95 whitespace-nowrap shrink-0 cursor-pointer" title="Upgrade to Pace Plot PRO">
           <i class="fa-solid fa-crown text-[9px]"></i>
           <span id="headerPremiumLabel">PRO</span>
         </button>
@@ -199,7 +199,7 @@
           </div>
 
           <!-- Compact Top-Left Weather Chip -->
-          <div id="mapWeatherBadge" class="absolute top-12 left-3 z-20 flex items-center gap-1.5 bg-stone-900/90 text-white backdrop-blur-md px-2.5 py-1 rounded-full border border-stone-700/80 shadow-md text-[11px] transition-all hover:bg-stone-900 cursor-pointer" title="Live Weather Conditions (Click to announce runner weather)">
+          <div id="mapWeatherBadge" class="absolute top-12 left-3 z-20 flex items-center gap-1.5 bg-stone-950/85 text-white backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-lg text-[11px] transition-all hover:bg-stone-900 cursor-pointer" title="Live Weather Conditions (Click to announce runner weather)">
             <i id="weatherConditionIcon" class="fa-solid fa-cloud-sun text-amber-400 text-xs"></i>
             <span id="weatherTempDisplay" class="font-black font-mono tabular-nums text-white">64°F</span>
             <span class="text-stone-500 text-[10px]">·</span>
@@ -210,8 +210,8 @@
             <span id="weatherConditionSummary" class="hidden">· Dry</span>
           </div>
 
-          <!-- Compact Top-Right Spotify Pill (Locked under PRO unless Trial or PRO active) -->
-          <div id="mapSpotifyFloatingPill" class="absolute top-12 right-3 z-20 flex items-center gap-1.5 bg-stone-950/90 text-white backdrop-blur-md pl-2.5 pr-1.5 py-1 rounded-full border border-stone-700/80 shadow-md text-xs transition-all hover:border-[#1DB954]/60">
+          <!-- Compact Top-Right Spotify Pill (Only shown when PRO / Trial is active) -->
+          <div id="mapSpotifyFloatingPill" class="hidden absolute top-12 right-3 z-20 flex items-center gap-1.5 bg-stone-950/90 text-white backdrop-blur-md pl-2.5 pr-1.5 py-1 rounded-full border border-white/10 shadow-lg text-xs transition-all hover:border-[#1DB954]/60">
             <button id="btnMapSpotifyOpenDrawer" class="flex items-center gap-1.5 text-left min-w-0 max-w-[130px] cursor-pointer" title="Open Spotify Running Playlists (Pace Plot PRO)">
               <i class="fa-brands fa-spotify text-[#1DB954] text-xs shrink-0"></i>
               <span id="mapSpotifyTrackTitle" class="text-[10px] font-bold text-white truncate">Spotify</span>
@@ -293,7 +293,7 @@
             <!-- ========================================================= -->
             <!-- SPOTIFY NAVIGATION HUD MINI-PLAYER WIDGET (PRO FEATURE)   -->
             <!-- ========================================================= -->
-            <div id="hudSpotifyMiniPlayer" class="mt-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-stone-900 via-stone-900/95 to-emerald-950/40 border border-stone-800 hover:border-[#1DB954]/40 transition-all relative overflow-hidden">
+            <div id="hudSpotifyMiniPlayer" class="hidden mt-2.5 p-2.5 rounded-2xl bg-gradient-to-r from-stone-900 via-stone-900/95 to-emerald-950/40 border border-stone-800 hover:border-[#1DB954]/40 transition-all relative overflow-hidden">
               <!-- PRO Paywall Lock Overlay inside HUD (Shown when user is not in active trial or PRO) -->
               <div id="hudSpotifyLockOverlay" class="mb-2 px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5 min-w-0">
