@@ -17,43 +17,19 @@
           </div>
         </div>
 
-        <!-- Health Connect Hub Card -->
-        <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
+        <!-- Health Connect Hub Card (Condensed) -->
+        <div class="bg-white dark:bg-stone-800 p-3.5 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-2.5">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-base shrink-0">
               <i class="fa-solid fa-heart-pulse"></i>
             </div>
-            <div class="flex-1">
+            <div class="flex-1 min-w-0">
               <h3 class="text-sm font-bold text-stone-900 dark:text-white">Android Health Connect</h3>
-              <p class="text-xs text-stone-500 dark:text-stone-400">Zero cloud fees. On-device biometric hub.</p>
+              <p class="text-[11px] text-stone-500 dark:text-stone-400 truncate">Google Fit · Samsung Health · Strava · Garmin</p>
             </div>
-            <button id="btnToggleHealthConnect" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition">
+            <button id="btnToggleHealthConnect" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition shrink-0">
               Connected
             </button>
-          </div>
-
-          <!-- Connected ecosystem badges -->
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 dark:border-stone-700 text-xs">
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-brands fa-google text-rose-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Google Fit</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-solid fa-mobile text-sky-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Samsung Health</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-brands fa-strava text-orange-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Strava Direct</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-stone-50 dark:bg-stone-700/50">
-              <i class="fa-solid fa-clock text-blue-500"></i>
-              <span class="font-medium text-stone-700 dark:text-stone-300">Garmin Connect</span>
-              <i class="fa-solid fa-check text-emerald-500 ml-auto text-xs"></i>
-            </div>
           </div>
         </div>
 
@@ -61,7 +37,10 @@
         <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3">
           <div class="flex items-center justify-between gap-2">
             <div>
-              <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics & BLE Heart Rate</h3>
+              <div class="flex items-center gap-1.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Live Biometrics & BLE Heart Rate</h3>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-terracotta/15 text-terracotta uppercase">PRO</span>
+              </div>
               <p id="bleHrDeviceStatusText" class="text-[10px] text-stone-400 mt-0.5">Pair Garmin, Polar, Wahoo, COROS, or Wear OS BLE HR sensor</p>
             </div>
             <span id="liveBiometricZoneBadge" class="px-2 py-0.5 rounded-md text-[10px] font-mono tabular-nums font-bold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/25">
@@ -92,19 +71,22 @@
 
         <!-- GPX Export & Share Action Card -->
         <div class="bg-gradient-to-br from-terracotta/10 to-amber-500/10 dark:from-terracotta/20 dark:to-stone-800 p-4 rounded-2xl border border-terracotta/20 space-y-2">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-file-export text-terracotta"></i>
-            <h3 class="text-sm font-bold text-stone-900 dark:text-white">Export & Watch Sync</h3>
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-file-export text-terracotta"></i>
+              <h3 class="text-sm font-bold text-stone-900 dark:text-white">Export & Watch Sync</h3>
+            </div>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-terracotta/15 text-terracotta uppercase">PRO</span>
           </div>
           <p class="text-xs text-stone-600 dark:text-stone-300">
             Export this safe route directly as a standard GPX file compatible with Apple Watch Workouts, Garmin Connect, COROS, or Suunto.
           </p>
           <div class="flex gap-2 pt-1">
-            <button id="btnExportGpx" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition">
+            <button id="btnExportGpx" class="flex-1 py-2 px-3 rounded-xl bg-terracotta hover:bg-terracotta-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
               <i class="fa-solid fa-download"></i>
               <span>Download .GPX Track</span>
             </button>
-            <button id="btnShareRoute" class="py-2 px-3 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-50 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-200 dark:border-stone-600 transition" title="Share Link">
+            <button id="btnShareRoute" class="py-2 px-3 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-50 text-stone-800 dark:text-stone-200 text-xs font-bold border border-stone-200 dark:border-stone-600 transition cursor-pointer" title="Share Link">
               <i class="fa-solid fa-share-nodes"></i>
             </button>
           </div>
@@ -160,8 +142,18 @@
             </div>
           </div>
 
-          <!-- Personalized Heart Rate Zones Based on Historical Max HR -->
-          <div class="pt-1 space-y-3">
+          <!-- Personalized Heart Rate Zones Based on Historical Max HR (PRO) -->
+          <div id="hrZonesProLockBanner" class="p-2.5 rounded-xl bg-stone-900 border border-amber-500/40 text-white flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <i class="fa-solid fa-lock text-amber-400 text-xs shrink-0"></i>
+              <span class="text-[11px] font-bold truncate">HR Zones & Telemetry Analysis (PRO)</span>
+            </div>
+            <button id="btnUnlockHrZonesPro" type="button" class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-terracotta text-white font-black text-[9px] uppercase tracking-wider shrink-0 cursor-pointer">
+              Unlock PRO
+            </button>
+          </div>
+
+          <div id="hrZonesProContent" class="pt-1 space-y-3 transition-opacity">
             <!-- Historical Max HR Telemetry Summary Box -->
             <div class="p-3 rounded-xl bg-stone-50 dark:bg-stone-900/70 border border-stone-200/80 dark:border-stone-700/80 space-y-2">
               <div class="flex items-start justify-between gap-2">
@@ -294,9 +286,6 @@
               <h3 class="text-xs font-bold uppercase tracking-wider text-stone-500">Cloud Run History</h3>
               <span id="workoutSyncBadge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">Local Only</span>
             </div>
-            <button id="btnDemoRecordRun" class="text-[11px] font-bold text-terracotta hover:underline flex items-center gap-1">
-              <i class="fa-solid fa-plus text-[10px]"></i> Log Run
-            </button>
           </div>
 
           <div id="workoutsHistoryList" class="space-y-2">
@@ -311,7 +300,7 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- CUSTOM 4-WEEK ATHLETIC TRAINING PLAN GENERATOR -->
+        <!-- CUSTOM 4-WEEK ATHLETIC TRAINING PLAN GENERATOR (PRO) -->
         <!-- ========================================== -->
         <div class="bg-white dark:bg-stone-800 p-4 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm space-y-3.5">
           <div class="flex items-center justify-between">
@@ -320,7 +309,10 @@
                 <i class="fa-solid fa-person-running"></i>
               </div>
               <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">Training Plan Generator</h3>
+                <div class="flex items-center gap-1.5">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">Training Plan Generator</h3>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-terracotta/15 text-terracotta uppercase">PRO</span>
+                </div>
                 <p class="text-[10px] text-stone-500 dark:text-stone-400">Custom 4-week block calibrated to your historical pace</p>
               </div>
             </div>
@@ -328,6 +320,18 @@
               5K Target
             </span>
           </div>
+
+          <div id="trainingPlanProLockBanner" class="p-2.5 rounded-xl bg-stone-900 border border-amber-500/40 text-white flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <i class="fa-solid fa-lock text-amber-400 text-xs shrink-0"></i>
+              <span class="text-[11px] font-bold truncate">Unlock Custom 4-Week Training Plans</span>
+            </div>
+            <button id="btnUnlockTrainingPlanPro" type="button" class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-terracotta text-white font-black text-[9px] uppercase tracking-wider shrink-0 cursor-pointer">
+              Unlock PRO
+            </button>
+          </div>
+
+          <div id="trainingPlanProContent" class="space-y-3.5 transition-opacity">
 
           <!-- Goal Distance Selector Buttons -->
           <div>
@@ -428,6 +432,7 @@
               <i class="fa-solid fa-calendar-plus text-[11px]"></i>
               <span>Export Block</span>
             </button>
+          </div>
           </div>
         </div>
       </section>

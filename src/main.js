@@ -1379,7 +1379,6 @@ function setupFirebaseAuth() {
   const workoutSyncBadge = document.getElementById('workoutSyncBadge');
   const cloudRoutesBadge = document.getElementById('cloudRoutesBadge');
   const btnSaveRouteToCloud = document.getElementById('btnSaveRouteToCloud');
-  const btnDemoRecordRun = document.getElementById('btnDemoRecordRun');
 
   async function handleAuthClick() {
     if (store.currentUser) {
@@ -1405,51 +1404,6 @@ function setupFirebaseAuth() {
   if (btnSaveRouteToCloud) {
     btnSaveRouteToCloud.addEventListener('click', async () => {
       await saveRouteWithDeduplication(store.activeRoute);
-    });
-  }
-
-  if (btnDemoRecordRun) {
-    btnDemoRecordRun.addEventListener('click', async () => {
-      if (!store.currentUser) {
-        speakInstruction('Please sign in with Google to log workouts to cloud.');
-        try {
-          await loginWithGoogle();
-        } catch (_) {
-          return;
-        }
-      }
-
-      const workoutData = {
-        routeTitle: store.activeRoute?.title || 'Demo Run',
-        distance: Number(store.activeRoute?.distance || 3.1),
-        durationSeconds: 1572,
-        avgPace: "8'27\"",
-        avgHeartRate: 148,
-        calories: 342,
-        completedAt: new Date().toISOString()
-      };
-
-      evaluateBadgesFromWorkouts([workoutData], { weather: store.currentWeatherData }, (badge) => {
-        playTurnChime();
-        speakInstruction(`Achievement unlocked: ${badge.title} badge! ${badge.subtitle}`);
-      });
-
-      store.historicalWorkoutsCache = [workoutData, ...store.historicalWorkoutsCache];
-      renderHeartRateZonesUI();
-
-      if (store.currentUser && navigator.onLine !== false) {
-        try {
-          await addRunActivity(workoutData);
-          playTurnChime();
-          speakInstruction('Workout logged to cloud history.');
-        } catch (_) {
-          await enqueueOfflineWorkout(workoutData);
-        }
-      } else {
-        await enqueueOfflineWorkout(workoutData);
-        playTurnChime();
-        speakInstruction('Workout queued locally. Will sync when online.');
-      }
     });
   }
 
@@ -1691,7 +1645,7 @@ function renderCloudWorkouts(workoutsList) {
   if (!workoutsList || workoutsList.length === 0) {
     container.innerHTML = `
       <div class="p-3 rounded-xl bg-stone-50 dark:bg-stone-700/40 border border-stone-100 dark:border-stone-700 text-center text-xs text-stone-500">
-        Complete a navigation loop or tap "Demo Record Run" to log activity to Cloud.
+        Complete a navigation loop to log your activity to Cloud.
       </div>
     `;
     return;

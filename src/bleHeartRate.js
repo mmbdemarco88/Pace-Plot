@@ -1,6 +1,7 @@
 import { store } from './state/store.js';
 import { parseBleHeartRateMeasurement } from './gpsEngine.js';
 import { playTurnChime, speakInstruction } from './voiceNav.js';
+import { hasPremiumAccess, openUpgradeModal } from './premium.js';
 
 export function setupBleHeartRateMonitor({ onHeartRateUpdate } = {}) {
   if (typeof document === 'undefined') return;
@@ -11,6 +12,10 @@ export function setupBleHeartRateMonitor({ onHeartRateUpdate } = {}) {
   if (!btnConnectBluetoothHr) return;
 
   btnConnectBluetoothHr.addEventListener('click', async () => {
+    if (!hasPremiumAccess()) {
+      openUpgradeModal('Bluetooth Heart Rate Sensor pairing is a Pace Plot PRO feature.');
+      return;
+    }
     if (store.isBleHrConnected && store.bleHrDevice && store.bleHrDevice.gatt?.connected) {
       store.bleHrDevice.gatt.disconnect();
       store.isBleHrConnected = false;

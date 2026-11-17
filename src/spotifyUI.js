@@ -224,7 +224,7 @@ export function initSpotifyMiniPlayerUI() {
       if (result && result.reason === 'missing_client_id') {
         if (configForm) configForm.classList.remove('hidden');
         if (configFeedback) {
-          configFeedback.textContent = 'Enter your Spotify App Client ID (from developer.spotify.com) or paste a Web API Token below.';
+          configFeedback.textContent = 'Enter your Spotify App ID or paste a session token below.';
           configFeedback.className = 'text-[10px] text-amber-400 font-medium';
           configFeedback.classList.remove('hidden');
         }

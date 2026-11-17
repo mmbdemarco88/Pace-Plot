@@ -15,6 +15,7 @@ async function ensureLeaflet() {
 import { store, escapeHtml } from './state/store.js';
 import { fetchRouteWeather } from './weather.js';
 import { THEME_MODES, getStoredTheme } from './theme.js';
+import { hasPremiumAccess, openUpgradeModal } from './premium.js';
 import {
   haversineDistanceMeters,
   computeLiveGpsPace,
@@ -2157,6 +2158,10 @@ export function setupMapAndRouteHandlers() {
   const toastEl = document.getElementById('exportStatusToast');
   if (exportGpxBtn) {
     exportGpxBtn.addEventListener('click', async () => {
+      if (!hasPremiumAccess()) {
+        openUpgradeModal('GPX Track Export & Watch Sync is a Pace Plot PRO feature.');
+        return;
+      }
       if (!store.activeRoute) return;
       if (!store.activeRoute.elevationsMeters) {
         await updateElevationChartSVG(store.activeRoute);

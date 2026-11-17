@@ -15,6 +15,23 @@
           </div>
         </div>
 
+        <!-- PRO Paywall Lock Banner (Shown when user is not in active Trial or PRO) -->
+        <div id="safeguardProLockBanner" class="p-3.5 rounded-2xl bg-gradient-to-r from-stone-900 to-stone-800 border border-amber-500/40 text-white shadow-lg flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-sm shrink-0">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-xs font-extrabold text-white">Stride SafeGuard™ is a PRO Feature</h3>
+              <p class="text-[11px] text-stone-300 leading-snug">Unlock live family tracking, SMS beacon dispatch, and automated SOS alerts.</p>
+            </div>
+          </div>
+          <button id="btnUnlockSafeguardPro" type="button" class="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-terracotta text-white font-black text-[10px] uppercase tracking-wider shrink-0 shadow-md hover:opacity-95 active:scale-95 transition cursor-pointer">
+            Unlock PRO
+          </button>
+        </div>
+
+        <div id="safeguardProContent" class="space-y-4 transition-opacity">
         <!-- Live Beacon Active Card -->
         <div class="bg-gradient-to-br from-stone-900 to-stone-800 text-white p-4 rounded-2xl border border-stone-700 shadow-lg space-y-3">
           <div class="flex items-center justify-between">
@@ -185,6 +202,7 @@
           <button id="btnCancelSosCountdown" class="w-full py-2 rounded-xl bg-white text-rose-700 font-extrabold text-xs shadow-sm hover:bg-rose-50 transition">
             I'M OKAY — CANCEL ALERT
           </button>
+        </div>
         </div>
       </section>
 

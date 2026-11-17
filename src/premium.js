@@ -368,8 +368,8 @@ export function updatePremiumUI() {
   const btnUpgrade = document.getElementById('btnOpenUpgradeModal');
   const trialBanner = document.getElementById('proModalTrialStatusBanner');
   const btnStartTrial = document.getElementById('btnStartFreeTrial');
-  const btnExpireTrialNow = document.getElementById('btnExpireTrialNow');
-  const btnResetTrialDemo = document.getElementById('btnResetTrialDemo');
+
+  syncProFeatureLocks(state.hasAccess);
 
   if (headerLabel) {
     if (state.status === SUBSCRIPTION_STATUS.PRO_ACTIVE) {
@@ -455,12 +455,28 @@ export function updatePremiumUI() {
   if (btnStartTrial) {
     btnStartTrial.classList.toggle('hidden', state.status !== SUBSCRIPTION_STATUS.FREE);
   }
-  if (btnExpireTrialNow) {
-    btnExpireTrialNow.classList.toggle('hidden', state.status !== SUBSCRIPTION_STATUS.TRIAL_ACTIVE);
-  }
-  if (btnResetTrialDemo) {
-    btnResetTrialDemo.classList.toggle('hidden', state.status === SUBSCRIPTION_STATUS.FREE);
-  }
+}
+
+function syncProFeatureLocks(hasAccess) {
+  if (typeof document === 'undefined') return;
+  const gatedSections = [
+    { bannerId: 'safeguardProLockBanner', contentId: 'safeguardProContent' },
+    { bannerId: 'hrZonesProLockBanner', contentId: 'hrZonesProContent' },
+    { bannerId: 'trainingPlanProLockBanner', contentId: 'trainingPlanProContent' }
+  ];
+
+  gatedSections.forEach(({ bannerId, contentId }) => {
+    const banner = document.getElementById(bannerId);
+    const content = document.getElementById(contentId);
+    if (banner) {
+      banner.classList.toggle('hidden', hasAccess);
+    }
+    if (content) {
+      content.classList.toggle('opacity-60', !hasAccess);
+      content.classList.toggle('pointer-events-none', !hasAccess);
+      content.classList.toggle('select-none', !hasAccess);
+    }
+  });
 }
 
 function syncTierUI() {
@@ -522,12 +538,31 @@ export function setupPremiumListeners(callbacks = {}) {
   const btnTierMonthly = document.getElementById('btnTierMonthly');
   const btnStartTrial = document.getElementById('btnStartFreeTrial');
   const btnSubscribe = document.getElementById('btnSubscribePro');
-  const btnExpireTrialNow = document.getElementById('btnExpireTrialNow');
-  const btnResetTrialDemo = document.getElementById('btnResetTrialDemo');
   const btnRestore = document.getElementById('btnRestorePurchases');
+  const btnUnlockSafeguardPro = document.getElementById('btnUnlockSafeguardPro');
+  const btnUnlockHrZonesPro = document.getElementById('btnUnlockHrZonesPro');
+  const btnUnlockTrainingPlanPro = document.getElementById('btnUnlockTrainingPlanPro');
 
   if (btnOpenModal) {
     btnOpenModal.addEventListener('click', () => openUpgradeModal());
+  }
+
+  if (btnUnlockSafeguardPro) {
+    btnUnlockSafeguardPro.addEventListener('click', () => {
+      openUpgradeModal('Stride SafeGuard™ Live Family Beacon & SOS Alerts require Pace Plot PRO.');
+    });
+  }
+
+  if (btnUnlockHrZonesPro) {
+    btnUnlockHrZonesPro.addEventListener('click', () => {
+      openUpgradeModal('Personalized Heart Rate Zones & Telemetry Analysis require Pace Plot PRO.');
+    });
+  }
+
+  if (btnUnlockTrainingPlanPro) {
+    btnUnlockTrainingPlanPro.addEventListener('click', () => {
+      openUpgradeModal('Custom 4-Week Training Plans require Pace Plot PRO.');
+    });
   }
 
   if (btnCloseModal) {
@@ -581,26 +616,6 @@ export function setupPremiumListeners(callbacks = {}) {
           syncTierUI();
         }, 700);
       }, 450);
-    });
-  }
-
-  // Simulate Trial Expiration Now (Instant Paywall Lock Verification)
-  if (btnExpireTrialNow) {
-    btnExpireTrialNow.addEventListener('click', () => {
-      const expiredState = expireFreeTrialNow();
-      if (typeof callbacks.onTrialExpired === 'function') {
-        callbacks.onTrialExpired(expiredState);
-      }
-    });
-  }
-
-  // Reset to Free / Untried Demo State
-  if (btnResetTrialDemo) {
-    btnResetTrialDemo.addEventListener('click', () => {
-      const resetState = resetSubscriptionToFree();
-      if (typeof callbacks.onReset === 'function') {
-        callbacks.onReset(resetState);
-      }
     });
   }
 
