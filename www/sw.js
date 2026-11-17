@@ -25,8 +25,8 @@ const PRECACHE_ASSETS = [
   '/assets/fa-solid-900-D0aA9rwL.ttf',
   '/assets/fa-v4compatibility-C9RhG_FT.woff2',
   '/assets/fa-v4compatibility-CCth-dXg.ttf',
-  '/assets/index-Bbs7ZbUC.js',
   '/assets/index-DMARjN0e.css',
+  '/assets/index-a0mQcrLb.js',
   '/assets/leaflet-src-DTmlu4rB.js'
 ];
 

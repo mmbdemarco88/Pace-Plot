@@ -325,9 +325,11 @@ function initServiceWorker() {
 
 function initSafetyDisclaimer() {
   const modal = document.getElementById('modalSafetyDisclaimer');
-  const checkbox = document.getElementById('checkboxSafetyAgree');
-  const btnAccept = document.getElementById('btnAcceptSafetyDisclaimer');
+  const checkbox = document.getElementById('checkAcknowledgeSafety');
+  const btnAccept = document.getElementById('btnAcceptDisclaimer');
+  const btnClose = document.getElementById('btnCloseDisclaimerModal');
   const btnTopSafety = document.getElementById('btnTopSafetyDisclaimer');
+  const btnHealthSafety = document.getElementById('btnHealthSafetyDisclaimer');
   const btnSettingsSafety = document.getElementById('btnSettingsSafetyDisclaimer');
   if (!modal) return;
 
@@ -361,7 +363,15 @@ function initSafetyDisclaimer() {
     });
   }
 
+  if (btnClose) {
+    btnClose.addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+  }
+
   function reopenSafetyModal() {
+    const settingsModal = document.getElementById('modalAppSettings');
+    if (settingsModal) settingsModal.classList.add('hidden');
     if (checkbox) {
       checkbox.checked = true;
       checkbox.dispatchEvent(new Event('change'));
@@ -369,6 +379,7 @@ function initSafetyDisclaimer() {
     modal.classList.remove('hidden');
   }
   if (btnTopSafety) btnTopSafety.addEventListener('click', reopenSafetyModal);
+  if (btnHealthSafety) btnHealthSafety.addEventListener('click', reopenSafetyModal);
   if (btnSettingsSafety) btnSettingsSafety.addEventListener('click', reopenSafetyModal);
 }
 
